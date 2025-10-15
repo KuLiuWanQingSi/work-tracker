@@ -1,0 +1,5 @@
+This directory is for browser extension (or user scripts to be specific) supports that is not actually a part
+of the main application. These scripts provide readonly access to database created and maintained by the main
+application, with an entrypoint that is should be loaded by Violentmonkey which evaluates all webpages opened,
+checks if the url matches anyone predefined by the user, and load the script from the url specified alongside
+by the user by attaching it into the webpage and initialize it with the decrypted database.

@@ -1,0 +1,52 @@
+{
+  "name": "work-tracker",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "vite --config vite.app.config.mts",
+    "build": "run-p build:app && run-p build:userscript && run-p build:userscript-configure-page",
+    "build:app": "vite build --config vite.app.config.mts",
+    "build:userscript": "vite build --config vite.userscript.config.mts",
+    "build:userscript-configure-page": "vite build --config vite.userscript-config-page.config.mts",
+    "lint": "eslint . --fix"
+  },
+  "dependencies": {
+    "@mdi/font": "7.4.47",
+    "@types/argon2-browser": "^1.18.4",
+    "@zip.js/zip.js": "^2.8.11",
+    "argon2-browser": "^1.18.0",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.24",
+    "vue-i18n": "^11.1.12",
+    "vue-router": "^4.6.3",
+    "vuetify": "^3.10.11"
+  },
+  "devDependencies": {
+    "@tsconfig/node22": "^22.0.5",
+    "@types/node": "^24.10.1",
+    "@vitejs/plugin-vue": "^6.0.2",
+    "@vue/tsconfig": "^0.8.1",
+    "eslint": "^9.39.1",
+    "eslint-config-vuetify": "^4.2.1-beta.1",
+    "npm-run-all2": "^8.0.4",
+    "sass-embedded": "^1.93.3",
+    "terser": "^5.44.1",
+    "typescript": "~5.9.3",
+    "unplugin-auto-import": "^20.2.0",
+    "unplugin-fonts": "^1.4.0",
+    "unplugin-vue-components": "^30.0.0",
+    "unplugin-vue-router": "^0.17.1",
+    "vite": "^7.2.4",
+    "vite-plugin-vue-devtools": "^8.0.5",
+    "vite-plugin-vue-layouts-next": "^1.2.0",
+    "vite-plugin-vuetify": "^2.1.2",
+    "vue-tsc": "^3.1.4"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ]
+}

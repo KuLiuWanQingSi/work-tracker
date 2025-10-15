@@ -1,0 +1,10 @@
+[UI] Improve import bottom dialog
+  The dialog is now too tight
+  The progress bar does not give accurate indication about the real progress: long wait time after the
+   progress bar has already reached the end
+
+[Maintenance] Clearup translation keys
+  The key structure is now totally chaos
+
+[functionality] Database maintenance
+  Statistics view about the database
