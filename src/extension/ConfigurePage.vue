@@ -287,18 +287,18 @@
       <a href="https://violentmonkey.github.io/" referrerpolicy="no-referrer">Violentmonkey</a>.<br />
       <a href="./wt-injector.user.js">Click here</a> to install the script, then reload this page.
     </main>
+    <v-footer>
+      <v-row justify="space-between" class="fill-width">
+        <v-col style="text-align: center">
+          <a
+            href="https://github.com/Snake52996/work-tracker/tree/main/src/extension"
+            style="text-decoration: none; color: unset"
+            >visit codebase on GitHub</a
+          >
+        </v-col>
+      </v-row>
+    </v-footer>
   </v-app>
-  <v-footer app>
-    <v-row justify="space-between" class="fill-width">
-      <v-col style="text-align: center">
-        <a
-          href="https://github.com/Snake52996/work-tracker/src/extension/"
-          style="text-decoration: none; color: unset"
-          >visit codebase on GitHub</a
-        >
-      </v-col>
-    </v-row>
-  </v-footer>
 </template>
 
 <script lang="ts" setup>
@@ -537,7 +537,6 @@ onMounted(() => {
       })
       .then(() => {
         window.addEventListener("beforeunload", () => {
-          console.log("onumount called");
           script_side_components.configure!.unlock();
         });
         build_local_structures();
@@ -555,7 +554,6 @@ onMounted(() => {
         });
       })
       .catch((error) => {
-        console.log(error);
         userscript_locked.value = true;
       });
   });

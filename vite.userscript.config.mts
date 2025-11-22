@@ -16,11 +16,11 @@ export default defineConfig(({ command }) => ({
           ([_, content]) => content.type === "chunk" && content.isEntry
         );
         if (entries.length === 0) {
-          console.warn("[userscript-bundler] cannot find entry for the userscript");
+          this.warn("[userscript-bundler] cannot find entry for the userscript");
           return;
         }
         if (entries.length > 1) {
-          console.warn(
+          this.warn(
             "[userscript-bundler] multiple entries existing, please check. They are:\n" +
               entries.map(([_, content]) => content.fileName).join("\n")
           );
@@ -29,14 +29,14 @@ export default defineConfig(({ command }) => ({
         // collect chunks by imported order
         const parsed_chunks = new Set<string>();
         const collected_chunks: Array<{ name: string; code: string }> = [];
-        function collectChunk(file_name: string) {
+        const collectChunk = (file_name: string) => {
           if (parsed_chunks.has(file_name)) {
             return;
           }
           parsed_chunks.add(file_name);
           const item = bundle[file_name];
           if (item === undefined) {
-            console.warn(`${file_name} referred but not found in bundle`);
+            this.warn(`${file_name} referred but not found in bundle`);
             return;
           }
           if (item.type === "chunk") {
@@ -46,7 +46,7 @@ export default defineConfig(({ command }) => ({
           } else {
             collected_chunks.push({ name: file_name, code: `/* asset ${file_name} */\n${item.source}` });
           }
-        }
+        };
         collectChunk(entries[0][0]);
         const entry_file_path = (() => {
           const data = entries[0][1];
