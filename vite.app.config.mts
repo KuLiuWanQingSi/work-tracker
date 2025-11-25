@@ -7,6 +7,7 @@ import VueRouter from "unplugin-vue-router/vite";
 import { VueRouterAutoImports } from "unplugin-vue-router";
 import Vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
 import vueDevTools from "vite-plugin-vue-devtools";
+import filename_sanitizer from "./src/build-utils/filename_sanitizer";
 
 // Utilities
 import { defineConfig, PluginOption } from "vite";
@@ -77,6 +78,7 @@ export default defineConfig(({ command }) => ({
     port: 3000,
   },
   build: {
+    rollupOptions: { output: { sanitizeFileName: filename_sanitizer } },
     minify: "terser",
   },
 }));

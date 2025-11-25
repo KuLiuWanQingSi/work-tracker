@@ -1,18 +1,13 @@
 // Plugins
-import AutoImport from "unplugin-auto-import/vite";
-import Components from "unplugin-vue-components/vite";
-import Fonts from "unplugin-fonts/vite";
-import Layouts from "vite-plugin-vue-layouts-next";
 import Vue from "@vitejs/plugin-vue";
-import VueRouter from "unplugin-vue-router/vite";
-import { VueRouterAutoImports } from "unplugin-vue-router";
 import Vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
 import vueDevTools from "vite-plugin-vue-devtools";
+
+import filename_sanitizer from "./src/build-utils/filename_sanitizer";
 
 // Utilities
 import { defineConfig, PluginOption } from "vite";
 import { fileURLToPath, URL } from "node:url";
-import { resolve } from "node:path";
 
 const EntryPath = "src/extension/index.html";
 
@@ -73,6 +68,9 @@ export default defineConfig(({ command }) => ({
     rollupOptions: {
       input: {
         index: EntryPath,
+      },
+      output: {
+        sanitizeFileName: filename_sanitizer,
       },
     },
     minify: "terser",
