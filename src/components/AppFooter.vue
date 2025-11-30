@@ -1,6 +1,6 @@
 <template>
-  <v-footer app height="40">
-    <v-row justify="space-between" class="fill-width">
+  <v-footer app>
+    <v-row justify="space-between" class="fill-width" align="center">
       <v-col style="text-align: center">
         <a href="https://github.com/Snake52996/work-tracker/">visit codebase on GitHub</a>
       </v-col>

@@ -137,7 +137,17 @@
     <template v-slot:default="{ items }">
       <v-container class="pa-2" fluid>
         <v-row justify="space-around">
-          <v-col v-for="item in items" :key="item.raw" class="flex-grow-0">
+          <v-col
+            v-for="item in items"
+            :key="item.raw"
+            class="flex-grow-0"
+            sm="12"
+            md="6"
+            lg="4"
+            xl="3"
+            xxl="2"
+            style="max-width: 480px"
+          >
             <ItemViewer
               :data_id="item.raw"
               :data="database_store.data.get(item.raw)!"
@@ -217,6 +227,7 @@
 import { Sorting } from "@/definitions/sorting_types";
 import { i18n } from "@/locales";
 import { to_sorting } from "@/procedures/sorting";
+import { find_tag_candidates } from "@/procedures/tag-matching";
 import { dual_way_filter } from "@/procedures/utilities";
 import { useDatabaseStore } from "@/stores/database";
 import type { DataItem } from "@/types/datasource-data";
@@ -402,20 +413,7 @@ const search_autocompletes = computed(() => {
           tag_matched_exactly = true;
 
           const tags = database_store.tags.get(entry_config.name) ?? [];
-          // first class: the operand input is the leading substring of the tag
-          const [first_class_candidates, remainders] = dual_way_filter(
-            tags,
-            (value) => value !== operand && value.startsWith(operand)
-          );
-          // second class: not first class, but the tag has the input operand as its substring
-          const second_class_candidates = remainders.filter(
-            (value) => value !== operand && value.includes(operand)
-          );
-          // zero class: an exact match
-          const candidates = (tags.includes(operand) ? [operand] : []).concat(
-            first_class_candidates,
-            second_class_candidates
-          );
+          const candidates = find_tag_candidates(operand, tags).map(({ display }) => display);
           candidates.forEach((candidate) => {
             const command = `${prefix}\$${to_enclosed_string(entry_config.name)}=${candidate}`;
             result.push({

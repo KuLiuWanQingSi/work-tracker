@@ -1,9 +1,9 @@
 <template>
   <v-row class="ma-2">
     <template v-if="selected_tags.length !== 0">
-      <v-col v-for="tag in selected_tags" :key="tag.title">
-        <v-chip closable @click:close="remove_tag(tag)">
-          {{ tag.title }}
+      <v-col v-for="tag in selected_tags" :key="tag.display">
+        <v-chip closable @click:close="remove_tag(tag.value)">
+          {{ tag.display }}
         </v-chip>
       </v-col>
     </template>
@@ -14,13 +14,24 @@
       ></v-text-field>
     </v-col>
     <v-col v-for="item in selectable_items">
-      <v-chip :prepend-icon="item.value === -1 ? 'mdi-plus' : ''" @click="commit_tag(item)">
-        {{ item.title }}
+      <v-chip
+        :prepend-icon="item.type === TagMatchClass.Creation ? 'mdi-plus' : ''"
+        :color="
+          item.type === TagMatchClass.ExactMatch
+            ? 'primary'
+            : item.type === TagMatchClass.Creation
+            ? ''
+            : 'secondary'
+        "
+        @click="commit_tag(item.value)"
+      >
+        {{ item.display }}
       </v-chip>
     </v-col>
   </v-row>
 </template>
 <script setup lang="ts">
+import { find_tag_candidates, TagMatchClass } from "@/procedures/tag-matching";
 import { useDatabaseStore } from "@/stores/database";
 import type { InternalTagEntryData } from "@/types/datasource-entry";
 import type {
@@ -38,12 +49,10 @@ const tag_map = readonly(database.tags.get(props.entry_name) ?? []);
 const input_tag: Ref<string> = ref("");
 
 const selected_tags = computed(() => {
-  return data.value.tags.map((value) => {
-    const string_value = typeof value === "string" ? value : tag_map[value]!;
-    const index_value = typeof value === "string" ? -1 : value;
+  return data.value.tags.map((value): { display: string; value: string | number } => {
     return {
-      title: string_value,
-      value: index_value,
+      display: typeof value === "string" ? value : tag_map[value]!,
+      value: value,
     };
   });
 });
@@ -51,39 +60,22 @@ const selectable_items = computed(() => {
   if (data.value === undefined) {
     return [];
   }
-  if (input_tag.value === "") {
+  const input = input_tag.value.trim();
+  if (input.length === 0) {
     return [];
   }
-  const result = tag_map
-    .map((value, index) => ({
-      title: value,
-      value: index,
-    }))
-    .filter(({ title, value }) => !data.value.tags.includes(value) && title.includes(input_tag.value));
-  // slot to help with creation
-  if (
-    !selected_tags.value
-      .concat(result)
-      .map((item) => item.title)
-      .includes(input_tag.value)
-  ) {
-    result.push({ title: input_tag.value, value: -1 });
-  }
-
-  return result;
+  const selected = selected_tags.value.map(({ value }) => value);
+  return find_tag_candidates(input, tag_map, { allow_creating: true }).filter(
+    ({ value }) => !selected.includes(value)
+  );
 });
 
-function commit_tag(tag: { title: string; value: number }) {
-  if (tag.value !== -1) {
-    data.value.tags.push(tag.value);
-  } else {
-    data.value.tags.push(tag.title);
-  }
+function commit_tag(tag: number | string) {
+  data.value.tags.push(tag);
   input_tag.value = "";
 }
-function remove_tag(tag: { title: string; value: number }) {
-  const target = tag.value !== -1 ? tag.value : tag.title;
-  const target_index = data.value.tags.indexOf(target);
+function remove_tag(tag: number | string) {
+  const target_index = data.value.tags.indexOf(tag);
   data.value.tags.splice(target_index, 1);
 }
 </script>

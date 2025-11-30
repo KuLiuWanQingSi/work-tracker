@@ -23,6 +23,14 @@ import type {
   DatasourceEntryConfiguration,
   DatasourceEntryRatingExtraConfiguration,
 } from "@/types/datasource-entry-details";
+
+import { watch } from "vue";
+
 defineProps<{ configuration: DatasourceEntryConfiguration }>();
 const data = defineModel<InternalRatingEntryData>("data", { required: true });
+watch(data.value, () => {
+  if(data.value.comment.trim() !== data.value.comment){
+    data.value.comment = data.value.comment.trim();
+  }
+});
 </script>

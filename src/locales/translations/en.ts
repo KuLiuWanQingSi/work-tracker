@@ -20,6 +20,10 @@ export const message = {
       failure_report: "Failed to {task} due to following errors:",
       entry_contains_error: "Following errors are detected for this entry:",
       missing_required_entry: "Required entry {0} not specified",
+      no_main_data_file: "Picked directory does not include the main data file data.json",
+      failed_loading_database: "Failed to load the database",
+      failed_opening_database:
+        "Failed to open the database, likely due to corrupted data file or incorrect password",
     },
     item_invalid_reason: {
       missing_entry: "missing required entry: {0}",

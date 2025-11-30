@@ -195,11 +195,12 @@
                     >update</v-btn
                   >
                   <v-btn
+                    v-if="is_modified(host, saved_local_side_components.hosts[index]!)"
                     color="warning"
                     @click="from_save_host(host, saved_local_side_components.hosts[index]!)"
                     >reset</v-btn
                   >
-                  <v-btn color="error" @click="remove_host(index)">remove</v-btn>
+                  <v-btn v-else color="error" @click="remove_host(index)">remove</v-btn>
                 </template>
               </v-card-actions>
             </v-card>
@@ -694,7 +695,7 @@ function create_host(host: LocalHost) {
   _rpc_wrapper(async () => {
     const new_host = await configuration.new_host(host.name, host.host, host.database, host.script);
     const local_host = to_local_host(new_host);
-    local_side_components.hosts.push(local_host);
+    local_side_components.hosts.splice(local_side_components.hosts.length - 1, 0, local_host);
     saved_local_side_components.hosts.push(to_save_host(local_host));
     host.name = "";
     host.host = "";

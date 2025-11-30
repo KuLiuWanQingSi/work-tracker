@@ -3,13 +3,14 @@
     <template v-slot:activator="{ props: activatorProps }">
       <v-card v-bind="activatorProps" :color="selection?.has(data_id) ? 'primary' : ''">
         <div v-if="database_store.has_image" class="fill-width">
-          <v-lazy :height="database_store.image_size.height">
+          <v-lazy>
             <v-img
-              :width="database_store.image_size.width"
-              :height="database_store.image_size.height"
+              width="100%"
+              :aspect-ratio="`${database_store.image_size.width}/${database_store.image_size.height}`"
               :src="override_image ?? fetched_image"
               style="margin: auto"
               @click="load_full_image"
+              class="image-display"
             >
               <template v-slot:placeholder>
                 <div
@@ -42,6 +43,11 @@
     </div>
   </v-tooltip>
 </template>
+<style lang="css" scoped>
+.image-display img{
+  object-fit: contain;
+}
+</style>
 <script setup lang="ts">
 import { useDatabaseStore } from "@/stores/database";
 import type { DataItem } from "@/types/datasource-data";

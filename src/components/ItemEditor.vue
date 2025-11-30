@@ -2,7 +2,6 @@
   <v-row>
     <v-col
       :style="column_style"
-      :xs="column_sizes.xs"
       :sm="column_sizes.sm"
       :md="column_sizes.md"
       :lg="column_sizes.lg"
@@ -21,7 +20,6 @@
     </v-col>
     <v-col
       :style="column_style"
-      :xs="column_sizes.xs"
       :sm="column_sizes.sm"
       :md="column_sizes.md"
       :lg="column_sizes.lg"
@@ -126,7 +124,6 @@ const emit = defineEmits<{
 }>();
 
 const column_sizes = computed(() => ({
-  xs: database_store.has_image ? "" : "12",
   sm: database_store.has_image ? "" : "12",
   md: database_store.has_image ? "" : "12",
   lg: database_store.has_image ? "" : "6",

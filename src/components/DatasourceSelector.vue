@@ -34,12 +34,13 @@
             </template>
           </v-text-field>
           <v-file-input
+            v-model="local_files"
             density="compact"
             prepend-icon="mdi-folder"
             webkitdirectory
             multiple
             :label="$t('message.input_local_directory')"
-            @update:model-value="load_from_local_directory_phase1"
+            @update:model-value="load_from_local_directory"
           ></v-file-input>
           <v-divider>{{ $t("message.alternative_way") }}</v-divider>
           <v-btn color="info" class="my-4" block to="/NewDatasource">{{
@@ -61,6 +62,7 @@ import { useDatabaseStore } from "@/stores/database";
 import type { EncryptedDatasource } from "@/types/datasource";
 import type { ImageLoader } from "@/types/datasource-images";
 import { inj_DisplayNotice } from "@/types/injections";
+import { error_reporter } from "@/procedures/utilities";
 
 import type { Ref } from "vue";
 import { inject, ref } from "vue";
@@ -74,16 +76,22 @@ const show_password: Ref<boolean> = ref(false);
 const phase2_function: Ref<() => void> = ref(() => {});
 const router = useRouter();
 const database_store = useDatabaseStore();
+const local_files: Ref<File[]> = ref([]);
 
 // variable to collect the url
 const url: Ref<string> = ref("");
 
 function open_database_phase2(encrypted_database: EncryptedDatasource, image_loader: ImageLoader) {
   loading.value = true;
-  load_datasource_phase2(encrypted_database, password.value, image_loader).then((database) => {
+  error_reporter(
+    load_datasource_phase2(encrypted_database, password.value, image_loader).then((database) => {
+      database_store.build_runtime_database(database);
+      router.push("/Main");
+    }),
+    t("message.error.failed_opening_database"),
+    display_notice
+  ).then(() => {
     loading.value = false;
-    database_store.build_runtime_database(database);
-    router.push("/Main");
   });
 }
 
@@ -102,73 +110,85 @@ function load_from_remote_url() {
   }
 
   // place fetching into async lambda expression to make the code clean
-  (async () => {
-    // try to fetch data.json
-    const path = URL.parse("data.json", base_url)!;
-    const response = await fetch(path);
-    if (!response.ok) {
-      display_notice(
-        "error",
-        t("message.error.failed_to_fetch_data", { source: path.toString() }),
-        `${response.status}: ${response.statusText}`
-      );
-      return;
-    }
-    const database_source = await response.text();
-    phase2_function.value = () => {
-      open_database_phase2(load_datasource_phase1(database_source), (name: string) => {
-        const target_url = URL.parse(name, base_url);
-        if (target_url === null) {
-          return null;
-        }
-        return new Promise((resolve, _) => {
-          const request = fetch(target_url);
-          request.then((response) => {
-            response.blob().then((result) => {
-              resolve(result);
+  error_reporter(
+    (async () => {
+      // try to fetch data.json
+      const path = URL.parse("data.json", base_url)!;
+      const response = await fetch(path);
+      if (!response.ok) {
+        display_notice(
+          "error",
+          t("message.error.failed_to_fetch_data", { source: path.toString() }),
+          `${response.status}: ${response.statusText}`
+        );
+        return;
+      }
+      const database_source = await response.text();
+      phase2_function.value = () => {
+        open_database_phase2(load_datasource_phase1(database_source), (name: string) => {
+          const target_url = URL.parse(name, base_url);
+          if (target_url === null) {
+            return null;
+          }
+          return new Promise((resolve, _) => {
+            const request = fetch(target_url);
+            request.then((response) => {
+              response.blob().then((result) => {
+                resolve(result);
+              });
             });
           });
         });
-      });
-    };
-    ask_password.value = true;
-  })().then(() => {
+      };
+      ask_password.value = true;
+    })(),
+    t("message.error.failed_loading_database"),
+    display_notice
+  ).then(() => {
     loading.value = false;
   });
 }
 
-function load_from_local_directory_phase1(input_file: File | File[] | undefined) {
+function load_from_local_directory(input_file: File | File[] | undefined) {
   if (input_file === undefined) {
     return;
   }
   loading.value = true;
-  const files = input_file instanceof Array ? input_file : [input_file];
+  const files = input_file instanceof Array ? [...input_file] : [input_file];
+  local_files.value.length = 0;
 
-  (async () => {
-    // filter out files in subdirectories
-    const root_files = files.filter((file) => file.webkitRelativePath.split("/").length === 2);
-    // construct a mapping for fast access
-    const file_lookup_table = new Map<string, File>(
-      root_files.map((file) => [file.webkitRelativePath.split("/")[1] ?? "", file])
-    );
-    const database_file = file_lookup_table.get("data.json");
-    if (database_file === undefined) {
-      return null;
-    }
-    const database_source = await database_file.text();
-    phase2_function.value = () => {
-      open_database_phase2(load_datasource_phase1(database_source), (name: string) => {
-        const file = file_lookup_table.get(name);
-        if (file === undefined) {
-          return null;
-        }
-        return new Promise((resolve, _) => {
-          resolve(file);
+  error_reporter(
+    (async () => {
+      // filter out files in subdirectories
+      const root_files = files.filter((file) => file.webkitRelativePath.split("/").length === 2);
+      // construct a mapping for fast access
+      const file_lookup_table = new Map<string, File>(
+        root_files.map((file) => [file.webkitRelativePath.split("/")[1] ?? "", file])
+      );
+      const database_file = file_lookup_table.get("data.json");
+      if (database_file === undefined) {
+        display_notice("error", t("message.error.no_main_data_file"), "");
+        return;
+      }
+      const database_source = await database_file.text();
+      phase2_function.value = () => {
+        open_database_phase2(load_datasource_phase1(database_source), (name: string) => {
+          const file = file_lookup_table.get(name);
+          if (file === undefined) {
+            return null;
+          }
+          return new Promise((resolve, _) => {
+            resolve(file);
+          });
         });
-      });
-    };
+      };
+      loading.value = false;
+      ask_password.value = true;
+    })(),
+    t("message.error.failed_loading_database"),
+    display_notice
+  ).then(() => {
     loading.value = false;
-    ask_password.value = true;
-  })();
+  });
 }
 </script>

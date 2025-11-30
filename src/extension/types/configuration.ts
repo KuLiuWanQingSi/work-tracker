@@ -218,7 +218,7 @@ export class InjectorScripts {
         return eval(content);
       }
       const encoded_script = new TextEncoder().encode(content);
-      const url = URL.createObjectURL(new Blob([encoded_script]));
+      const url = URL.createObjectURL(new Blob([encoded_script], { type: "text/javascript" }));
       const module = await import(url);
       URL.revokeObjectURL(url);
       return module;

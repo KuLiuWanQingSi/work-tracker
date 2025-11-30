@@ -197,6 +197,7 @@ import type { Ref, Reactive } from "vue";
 import { onMounted, reactive, readonly, computed, ref, inject, useTemplateRef, watch } from "vue";
 import { useGoTo } from "vuetify";
 import type { VCard } from "vuetify/components";
+import { find_tag_candidates } from "@/procedures/tag-matching";
 
 const { t } = i18n.global;
 const goto = useGoTo();
@@ -296,33 +297,11 @@ const selectable_tags = computed(() => {
   return input_receivers.map(
     ({ add_mode, content }, index): { display_name: string; internal_value: string | number }[] => {
       const modifications = local_state.tag_modifications[index]!;
-      const reshaped_tag_pool = modifications.tag_pool.map((value, index) => ({
-        display_name: value,
-        internal_value: index,
-      }));
-      const exact_match = (() => {
-        const exact_match_index = modifications.tag_pool.indexOf(content);
-        if (exact_match_index !== -1) {
-          // return this exact match
-          return { display_name: content, internal_value: exact_match_index };
-        }
-        // no exact match was found, a candidate can still be generated if the user is adding a tag
-        if (add_mode && content.length !== 0) {
-          return { display_name: content, internal_value: content };
-        }
-        return null;
-      })();
-      // provide autocompletion
-      const non_exact_matches = reshaped_tag_pool.filter(({ display_name }) => display_name !== content);
-      const [prefix_match, not_prefix] = dual_way_filter(non_exact_matches, ({ display_name }) =>
-        display_name.startsWith(content)
-      );
-      const candidates = (exact_match === null ? [] : [exact_match]).concat(
-        prefix_match,
-        not_prefix.filter(({ display_name }) => display_name.includes(content))
-      );
-      // filter out tags that have already been added or removed
-      return candidates.filter(
+      // find matches tags and filter out candidates that have already been added or removed
+      return find_tag_candidates(content, modifications.tag_pool, {allow_creating: add_mode && content.length !== 0}).map(({display, value}) => ({
+        display_name: display,
+        internal_value: value,
+      })).filter(
         ({ internal_value }) =>
           !modifications.added.includes(internal_value) &&
           (typeof internal_value === "string" || !modifications.removed.includes(internal_value))

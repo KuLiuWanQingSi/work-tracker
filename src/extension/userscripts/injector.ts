@@ -31,6 +31,7 @@ function inject_styles() {
 	transform: translate(-50%, -50%);
 	background-color: #18191b;
   z-index: 99999999;
+  color: #ffffff;
 }
 .wt-alert-container > h3 {
   margin: 0;
@@ -122,26 +123,72 @@ async function update_materials(
   updates: { database?: InjectorDatabases; script?: InjectorScripts },
   action_map: Map<IndicatorState, () => void>
 ) {
-  if (updates.script) {
+  // how should in-place update be done?
+  // 1. if nothing is modified, nothing to be done, just update the indicator
+  // 2. if only the database is updated:
+  // 2.1. if the script is equipped with reset_data, use it to replace the data directly
+  // 2.2. if the script is not equipped with reset_data but with stop, restart it with new data
+  // 2.3. otherwise, make it pending-update since it cannot be updated in-place
+  // 3. if only the script is updated:
+  // 3.1. if the script is equipped with stop, stop the old one an start with the new instance
+  // 3.2. otherwise, make it pending-update since it cannot be updated in-place
+  // 4. if both database and script is updated:
+  // 4.1. if the script is equipped with stop, stop the old one an start with the new instance and new data
+  // 4.2. otherwise, make it pending-update since it cannot be updated in-place
+  // To summarize: if the script is updated, a stop/run is always required. Otherwise, if only the database
+  //  is updated, stop/run can be avoided with reset_data.
+
+  if (updates.database) {
+    // the database can be updated in-place at the very beginning
+    materials.database = updates.database;
+  }
+
+  const stop_run = async (): Promise<boolean> => {
+    // this is a helper function to perform stop/run, returns if the procedure should be interrupted
+    //  it handles both the case that current instance of script is equipped with stop and the case that it
+    //  is not. The script instance is updated automatically if the script is updated.
     if (materials.script_instance.stop === undefined) {
       // the script is not equipped with API stop, we can only restart it by reloading the page
-      return configure_indicator(materials.indicator, "pending-update", action_map);
+      configure_indicator(materials.indicator, "pending-update", action_map);
+      return true;
     }
     if (await user_script_guard(materials.script_instance.stop(), "stop", materials.indicator, action_map)) {
+      // the stop function failed and the error has been reported, just terminate
+      return true;
+    }
+    // update the script instance
+    if (updates.script) {
+      materials.script = updates.script;
+      materials.script_instance = await materials.script.get_instance();
+    }
+    // (re)start the script
+    const data = await materials.database.get_content();
+    if (
+      await user_script_guard(materials.script_instance.run(data), "start", materials.indicator, action_map)
+    ) {
+      // the run function failed and the error has been reported, just terminate
+      return true;
+    }
+    // all done, the script is up and running again
+    //  note that the indicator is not updated here
+    return false;
+  };
+
+  if (updates.script) {
+    // if the script is updated, we need to perform stop/run if possible
+    if (await stop_run()) {
       return;
     }
-    materials.script = updates.script;
-    materials.script_instance = await materials.script.get_instance();
-  }
-  if (updates.database) {
-    materials.database = updates.database;
-    const new_data = await materials.database.get_content();
-    if (updates.script) {
-      // currently the script is in stopped (not started) state
+  } else if (updates.database) {
+    // the database is updated but the script is not updated
+    //  first, check if the database can be updated in-place with reset_data
+    if (materials.script_instance.reset_data !== undefined) {
+      // if it can, prefer this since it avoids some overhead
+      const new_data = await materials.database.get_content();
       if (
         await user_script_guard(
-          materials.script_instance.run(new_data),
-          "start",
+          materials.script_instance.reset_data(new_data),
+          "restart",
           materials.indicator,
           action_map
         )
@@ -149,43 +196,13 @@ async function update_materials(
         return;
       }
     } else {
-      // currently the script is running
-      // prefer reset_data if possible
-      if (materials.script_instance.reset_data !== undefined) {
-        if (
-          await user_script_guard(
-            materials.script_instance.reset_data(new_data),
-            "restart",
-            materials.indicator,
-            action_map
-          )
-        ) {
-          return;
-        }
-      } else if (materials.script_instance.stop !== undefined) {
-        // if the script can be stopped, we can still update the data
-        if (
-          (await user_script_guard(
-            materials.script_instance.stop(),
-            "stop",
-            materials.indicator,
-            action_map
-          )) ||
-          (await user_script_guard(
-            materials.script_instance.run(new_data),
-            "start",
-            materials.indicator,
-            action_map
-          ))
-        ) {
-          return;
-        }
-      } else {
-        // we cannot update the data, the webpage has to be reloaded
-        return configure_indicator(materials.indicator, "pending-update", action_map);
+      // otherwise, a stop/run is required to update the data
+      if (await stop_run()) {
+        return;
       }
     }
   }
+  // the indicator can be updated now
   configure_indicator(materials.indicator, "active", action_map);
 }
 function build_state_action_map(materials: InternalState): Map<IndicatorState, () => void> {
@@ -259,6 +276,10 @@ export async function start_injector(host: InjectorHosts, configuration: Injecto
   // get ready for possible updates
   configuration.setup_autoupdate();
   configuration.register_host_watcher(host.name, (modification) => {
+    // take no reaction if currently in unstable state
+    if (indicator.state !== "active") {
+      return;
+    }
     if (
       // the host was removed entirely
       modification.removed ||
