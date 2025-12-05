@@ -1,6 +1,6 @@
 <template>
   <v-footer app>
-    <v-row justify="space-between" class="fill-width" align="center">
+    <v-row align="center" class="fill-width" justify="space-between">
       <v-col style="text-align: center">
         <a href="https://github.com/Snake52996/work-tracker/">visit codebase on GitHub</a>
       </v-col>
@@ -13,8 +13,8 @@
     </v-row>
   </v-footer>
   <v-dialog v-model="show_licenses">
-    <v-container width="max-content" style="overflow-y: scroll; scrollbar-width: none">
-      <v-banner sticky class="pa-1">
+    <v-container style="overflow-y: scroll; scrollbar-width: none" width="max-content">
+      <v-banner class="pa-1" sticky>
         <v-btn block @click="show_licenses = false">close</v-btn>
       </v-banner>
       <v-card v-for="(group, group_index) in licenses" :key="group_index" class="my-4">

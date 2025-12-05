@@ -7,7 +7,7 @@
   </v-sheet>
   <v-container class="mt-8">
     <v-row>
-      <v-spacer></v-spacer>
+      <v-spacer />
       <v-btn append-icon="mdi-arrow-right" color="primary" @click="emit('next')">
         {{ $t("action.start") }}
       </v-btn>

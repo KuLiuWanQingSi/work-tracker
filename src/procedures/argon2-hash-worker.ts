@@ -22,7 +22,7 @@ type Argon2HashWorkerFailedResult = {
 
 export type Argon2HashWorkerResult = Argon2HashWorkerSucceedResult | Argon2HashWorkerFailedResult;
 
-self.addEventListener("message", (event) => {
+self.addEventListener("message", event => {
   const parameters: Argon2HashWorkerParameters = event.data;
   const converted_parameters = {
     pass: parameters.payload,
@@ -34,10 +34,10 @@ self.addEventListener("message", (event) => {
     type: ArgonType.Argon2id,
   };
   argon2(converted_parameters)
-    .then((result) => {
+    .then(result => {
       self.postMessage({ succeed: true, result: result.hash });
     })
-    .catch((error) => {
+    .catch(error => {
       self.postMessage({ succeed: false, error_code: error.code, error_message: error.message });
     });
 });

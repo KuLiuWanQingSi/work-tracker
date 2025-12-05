@@ -1,8 +1,8 @@
-export * from "./crypto-readonly";
-
 import type { Datasource, EncryptedDatasource } from "@/types/datasource";
 import type { ImageFormatSpecification } from "@/types/image-types";
 import { NonceLength } from "./crypto-readonly";
+
+export * from "./crypto-readonly";
 
 function stringify_replacer(this: any, key: string, value: any) {
   if (key == "runtime") {
@@ -22,14 +22,14 @@ function stringify_replacer(this: any, key: string, value: any) {
 }
 
 // get random bytes as a Uint8Array
-export function wt_random_bytes(length: number): Uint8Array{
+export function wt_random_bytes(length: number): Uint8Array {
   const result = new Uint8Array(length);
   return crypto.getRandomValues(result);
 }
 
 export async function wt_encrypt(
   key: CryptoKey,
-  data: string | Uint8Array
+  data: string | Uint8Array,
 ): Promise<{ data: Uint8Array; nonce: Uint8Array }> {
   const encoded_data = typeof data === "string" ? new TextEncoder().encode(data) : data;
   const nonce = new Uint8Array(NonceLength);
@@ -37,13 +37,13 @@ export async function wt_encrypt(
   const encrypted_data = await crypto.subtle.encrypt(
     { name: "AES-GCM", iv: nonce },
     key,
-    encoded_data as BufferSource
+    encoded_data as BufferSource,
   );
-  return { data: new Uint8Array(encrypted_data), nonce: nonce };
+  return { data: new Uint8Array(encrypted_data), nonce };
 }
 
 export class RekeyError extends Error {}
-export const EncryptMessageLimit = 1000000;
+export const EncryptMessageLimit = 1_000_000;
 
 // image encrypting specification:
 //  Two image file formats (and therefore two codecs) are used in the database: PNG and WebP
@@ -79,7 +79,11 @@ export const EncryptMessageLimit = 1000000;
 //  WebP files have their leading 12 bytes unchanged. This includes the RIFF file signature (4 bytes),
 //   the file size (4 bytes) and the WebP signature (4 bytes). This header leaks nothing, since the
 //   file size is known anyway.
-export async function encrypt_image(image: Blob, format: ImageFormatSpecification, key: CryptoKey): Promise<Blob> {
+export async function encrypt_image(
+  image: Blob,
+  format: ImageFormatSpecification,
+  key: CryptoKey,
+): Promise<Blob> {
   const header_size = format.header_length;
   const array = await image.bytes();
   const image_header = array.slice(0, header_size);

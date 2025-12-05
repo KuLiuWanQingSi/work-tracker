@@ -1,5 +1,5 @@
-import { ImageFormat, type ImageFormatSpecification } from "@/types/image-types";
 import type { LoadedImage } from "./item-migrant";
+import { ImageFormat, type ImageFormatSpecification } from "@/types/image-types";
 
 const ImagePerRow = 8;
 const ImageRows = 8;
@@ -14,7 +14,7 @@ export const ImagePoolConfiguration = {
 
 function get_offset(
   index: number,
-  image_size: { height: number; width: number }
+  image_size: { height: number; width: number },
 ): { sx: number; sy: number } {
   const sx = (index % ImagePerRow) * image_size.width;
   const sy = Math.floor(index / ImagePerRow) * image_size.height;
@@ -35,7 +35,7 @@ export function to_thumbnail_size(size: { height: number; width: number }): {
 export async function crop_image(
   image: Blob | ImageBitmap,
   index: number,
-  image_size: { height: number; width: number }
+  image_size: { height: number; width: number },
 ): Promise<string | null> {
   const canvas = new OffscreenCanvas(image_size.width, image_size.height);
   const context = canvas.getContext("2d");
@@ -58,7 +58,7 @@ export async function crop_image(
       0,
       0,
       image_size.width,
-      image_size.height
+      image_size.height,
     );
   }
   const blob = await canvas.convertToBlob({ type: DefaultImageType });
@@ -71,7 +71,7 @@ export async function load_image(
   image: Blob | HTMLImageElement,
   image_size: { height: number; width: number },
   image_format: ImageFormatSpecification,
-  thumbnail_format: ImageFormatSpecification
+  thumbnail_format: ImageFormatSpecification,
 ): Promise<LoadedImage | null> {
   const canvas = new OffscreenCanvas(image_size.width, image_size.height);
   const context = canvas.getContext("2d");
@@ -95,9 +95,9 @@ export async function load_image(
   const thumbnail_bitmap = canvas.transferToImageBitmap();
   const thumbnail_url = URL.createObjectURL(thumbnail_blob);
   return {
-    thumbnail_url: thumbnail_url,
+    thumbnail_url,
     thumbnail: thumbnail_bitmap,
-    image_url: image_url,
+    image_url,
     image: image_bitmap,
   };
 }
@@ -121,20 +121,20 @@ export async function place_image(
   index: number,
   source: ImageBitmap,
   image_size: { height: number; width: number },
-  format: ImageFormatSpecification
+  format: ImageFormatSpecification,
 ): Promise<Blob>;
 export async function place_image(
   destination: ImageBitmap,
   index: number,
   source: ImageBitmap,
-  image_size: { height: number; width: number }
+  image_size: { height: number; width: number },
 ): Promise<ImageBitmap>;
 export async function place_image(
   destination: Blob | ImageBitmap,
   index: number,
   source: ImageBitmap,
   image_size: { height: number; width: number },
-  format?: ImageFormatSpecification
+  format?: ImageFormatSpecification,
 ): Promise<Blob | ImageBitmap> {
   const destination_bitmap =
     destination instanceof Blob ? await window.createImageBitmap(destination) : destination;

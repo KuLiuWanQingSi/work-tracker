@@ -10,21 +10,23 @@ export type IndicatorState =
 export class Indicator {
   #state: IndicatorState = "loading";
   #node: HTMLDivElement;
-  action: () => void = () => {};
-  get state() {
-    return this.#state;
-  }
-  set state(value: IndicatorState) {
-    this.#node.classList.value = `wt-indicator wt-indicator-${value}`;
-    this.#state = value;
-  }
+
   constructor(parent: HTMLElement) {
     this.#node = document.createElement("div");
     this.#node.addEventListener("click", () => {
       this.action();
     });
-    parent.appendChild(this.#node);
+    parent.append(this.#node);
     this.state = "loading";
+  }
+
+  get state() {
+    return this.#state;
+  }
+
+  set state(value: IndicatorState) {
+    this.#node.classList.value = `wt-indicator wt-indicator-${value}`;
+    this.#state = value;
   }
 
   static get_css() {
@@ -83,4 +85,6 @@ export class Indicator {
   border-color: #fc0c0c;
 }`;
   }
+
+  action: () => void = () => {};
 }

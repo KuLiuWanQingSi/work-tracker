@@ -7,8 +7,7 @@ export function make_database_pack(root_name: string) {
     level: 0, // there is no need to compress it
     zip64: true,
   });
-  const pending_tasks: Promise<any>[] = [];
-  pending_tasks.push(zip_builder.add(root_name, undefined, { directory: true }));
+  const pending_tasks: Promise<any>[] = [zip_builder.add(root_name, undefined, { directory: true })];
   const add_from_string = (name: string, content: string): void => {
     pending_tasks.push(zip_builder.add(`${root_name}/${name}`, new TextReader(content)));
   };

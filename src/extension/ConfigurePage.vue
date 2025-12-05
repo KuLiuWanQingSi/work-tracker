@@ -2,7 +2,7 @@
   <v-app>
     <main v-if="userscript_ready">
       <v-container>
-        <v-alert border="start" title="Do not use WT Injector on untrusted devices!" type="warning" closable>
+        <v-alert border="start" closable title="Do not use WT Injector on untrusted devices!" type="warning">
           WT Injector caches the (transformed) password you input in this page. The will not leak your actual
           password, but is sufficient for anyone who acquires this cached value to decrypt your database.
           Therefore, do not use this injector on devices that you do not trust! You should not input any of
@@ -13,29 +13,29 @@
           <v-card-text>
             <v-row justify="space-around">
               <v-col v-for="name in indicator_states" :key="name" class="flex-grow-0">
-                <div :id="`indicator-${name}`" style="width: 50px; height: 50px; margin: auto"></div>
+                <div :id="`indicator-${name}`" style="width: 50px; height: 50px; margin: auto" />
                 <p style="text-align: center">{{ name }}</p>
               </v-col>
             </v-row>
           </v-card-text>
         </v-card>
-        <v-card color="secondary" class="my-8">
+        <v-card class="my-8" color="secondary">
           <v-card-title>Databases</v-card-title>
           <v-card-text>
             <v-card
               v-for="(database, index) in local_side_components.databases"
-              :key="database.id"
-              color="indigo-darken-3"
-              class="my-4"
               :id="`database-${database.id}`"
+              :key="database.id"
+              class="my-4"
+              color="indigo-darken-3"
             >
               <v-card-title>{{
                 index === modification_times.databases.length ? "create a new database" : database.name
               }}</v-card-title>
               <v-card-text>
-                <v-text-field v-model="database.name" label="name"></v-text-field>
-                <v-text-field v-model="database.url" label="URL"></v-text-field>
-                <v-text-field v-model="database.password" label="password" type="password"></v-text-field>
+                <v-text-field v-model="database.name" label="name" />
+                <v-text-field v-model="database.url" label="URL" />
+                <v-text-field v-model="database.password" label="password" type="password" />
                 <div v-if="index !== modification_times.databases.length">
                   {{ `Last updated: ${modification_times.databases[index]!.toLocaleString()}` }}
                 </div>
@@ -45,65 +45,65 @@
                   <v-btn
                     color="primary"
                     :disabled="
-                      [database.name, database.url, database.password].some((value) => value.length === 0)
+                      [database.name, database.url, database.password].some(value => value.length === 0)
                     "
                     @click="create_database"
-                    >create</v-btn
                   >
+                    create
+                  </v-btn>
                   <v-btn color="error" @click="clear_database(database)">clear</v-btn>
                 </template>
                 <template v-else>
-                  <v-btn @click="update_database(index)">{{
-                    is_modified(database, saved_local_side_components.databases[index]!) ||
-                    database.password.length !== 0
-                      ? "update"
-                      : "refetch"
-                  }}</v-btn>
+                  <v-btn @click="update_database(index)">
+                    {{
+                      is_modified(database, saved_local_side_components.databases[index]!) ||
+                      database.password.length > 0
+                        ? "update"
+                        : "refetch"
+                    }}
+                  </v-btn>
                   <v-btn
                     color="warning"
                     @click="from_save_database(database, saved_local_side_components.databases[index]!)"
-                    >reset</v-btn
                   >
+                    reset
+                  </v-btn>
                   <v-btn color="error" @click="remove_database(index)">remove</v-btn>
                 </template>
               </v-card-actions>
             </v-card>
           </v-card-text>
         </v-card>
-        <v-card color="secondary" class="my-8">
+        <v-card class="my-8" color="secondary">
           <v-card-title>Scripts</v-card-title>
           <v-card-text>
             <v-card
               v-for="(script, index) in local_side_components.scripts"
-              :key="script.id"
-              color="indigo-darken-3"
-              class="my-4"
               :id="`script-${script.id}`"
+              :key="script.id"
+              class="my-4"
+              color="indigo-darken-3"
             >
               <v-card-title>{{
                 index === modification_times.scripts.length ? "create a new script" : script.name
               }}</v-card-title>
               <v-card-text>
-                <v-text-field v-model="script.name" label="name"></v-text-field>
+                <v-text-field v-model="script.name" label="name" />
                 <v-radio-group
                   v-model="script.type"
                   inline
                   label="type"
                   @update:model-value="script.source = ''"
                 >
-                  <v-radio label="remote" value="remote"></v-radio>
-                  <v-radio label="local" value="local"></v-radio>
+                  <v-radio label="remote" value="remote" />
+                  <v-radio label="local" value="local" />
                 </v-radio-group>
                 <v-radio-group v-model="script.mode" inline label="mode">
-                  <v-radio label="module" value="module"></v-radio>
-                  <v-radio label="classic" value="classic"></v-radio>
+                  <v-radio label="module" value="module" />
+                  <v-radio label="classic" value="classic" />
                 </v-radio-group>
-                <v-text-field
-                  v-if="script.type === 'remote'"
-                  v-model="script.source"
-                  label="url"
-                ></v-text-field>
-                <v-textarea v-else no-resize rows="8" v-model="script.source" label="code"></v-textarea>
+                <v-text-field v-if="script.type === 'remote'" v-model="script.source" label="url" />
+                <v-textarea v-else v-model="script.source" label="code" no-resize rows="8" />
                 <div v-if="index !== modification_times.scripts.length">
                   {{ `Last updated: ${modification_times.scripts[index]!.toLocaleString()}` }}
                 </div>
@@ -113,93 +113,100 @@
                   <v-btn
                     color="primary"
                     :disabled="
-                      [script.name, script.mode, script.type, script.source].some(
-                        (value) => value.length === 0
-                      )
+                      [script.name, script.mode, script.type, script.source].some(value => value.length === 0)
                     "
                     @click="create_script(script)"
-                    >create</v-btn
                   >
+                    create
+                  </v-btn>
                   <v-btn color="error" @click="clear_script(script)">clear</v-btn>
                 </template>
                 <template v-else>
                   <v-btn
-                    :disabled="!is_modified(script, saved_local_side_components.scripts[index]!) && script.type === 'local'"
+                    :disabled="
+                      !is_modified(script, saved_local_side_components.scripts[index]!) &&
+                      script.type === 'local'
+                    "
                     @click="update_script(index)"
-                    >{{
-                      is_modified(script, saved_local_side_components.scripts[index]!) ? "update" : "refetch"
-                    }}</v-btn
                   >
+                    {{
+                      is_modified(script, saved_local_side_components.scripts[index]!) ? "update" : "refetch"
+                    }}
+                  </v-btn>
                   <v-btn
                     color="warning"
                     @click="from_save_script(script, saved_local_side_components.scripts[index]!)"
-                    >reset</v-btn
                   >
+                    reset
+                  </v-btn>
                   <v-btn color="error" @click="remove_script(index)">remove</v-btn>
                 </template>
               </v-card-actions>
             </v-card>
           </v-card-text>
         </v-card>
-        <v-card color="secondary" class="my-8">
+        <v-card class="my-8" color="secondary">
           <v-card-title>Hosts</v-card-title>
           <v-card-text>
             <v-card
               v-for="(host, index) in local_side_components.hosts"
+              :id="`host-${host.id}`"
               :key="host.id"
-              color="indigo-darken-3"
               class="my-4"
-              :id="`host-${host.name}`"
+              color="indigo-darken-3"
             >
               <v-card-title>{{
                 index === saved_local_side_components.hosts.length ? "create a new host" : host.name
               }}</v-card-title>
               <v-card-text>
-                <v-text-field v-model="host.name" label="name"></v-text-field>
-                <v-text-field v-model="host.host" label="matcher"></v-text-field>
+                <v-text-field v-model="host.name" label="name" />
+                <v-text-field v-model="host.host" label="matcher" />
                 <v-select
-                  :items="local_side_components.databases.filter((database) => database.id.length > 0)"
-                  item-title="name"
-                  item-value="id"
                   v-model="host.database"
-                  label="database"
                   append-icon="mdi-open-in-new"
-                  @click:append="goto(`#database-${host.database}`)"
-                ></v-select>
-                <v-select
-                  :items="local_side_components.scripts.filter((script) => script.id.length > 0)"
                   item-title="name"
                   item-value="id"
+                  :items="local_side_components.databases.filter(database => database.id.length > 0)"
+                  label="database"
+                  @click:append="goto(`#database-${host.database}`)"
+                />
+                <v-select
                   v-model="host.script"
-                  label="script"
                   append-icon="mdi-open-in-new"
+                  item-title="name"
+                  item-value="id"
+                  :items="local_side_components.scripts.filter(script => script.id.length > 0)"
+                  label="script"
                   @click:append="goto(`#script-${host.script}`)"
-                ></v-select>
+                />
               </v-card-text>
               <v-card-actions class="justify-end">
                 <template v-if="index === saved_local_side_components.hosts.length">
                   <v-btn
                     color="primary"
                     :disabled="
-                      [host.name, host.host, host.database, host.script].some((value) => value.length === 0)
+                      [host.name, host.host, host.database, host.script].some(value => value.length === 0)
                     "
                     @click="create_host(host)"
-                    >create</v-btn
                   >
+                    create
+                  </v-btn>
                   <v-btn color="error" @click="clear_host(host)">clear</v-btn>
                 </template>
                 <template v-else>
                   <v-btn
-                    @click="update_host(index)"
                     :disabled="!is_modified(host, saved_local_side_components.hosts[index]!)"
-                    >update</v-btn
+                    @click="update_host(index)"
                   >
+                    update
+                  </v-btn>
                   <v-btn
                     v-if="is_modified(host, saved_local_side_components.hosts[index]!)"
                     color="warning"
                     @click="from_save_host(host, saved_local_side_components.hosts[index]!)"
-                    >reset</v-btn
                   >
+                    reset
+                  </v-btn>
                   <v-btn v-else color="error" @click="remove_host(index)">remove</v-btn>
                 </template>
               </v-card-actions>
@@ -207,55 +214,56 @@
           </v-card-text>
         </v-card>
         <div class="fill-width">
-          <v-btn color="primary" block @click="update_all" class="my-2">refetch all</v-btn>
-          <v-btn block @click="export_settings" class="my-2" color="secondary">export settings</v-btn>
+          <v-btn block class="my-2" color="primary" @click="update_all">refetch all</v-btn>
+          <v-btn block class="my-2" color="secondary" @click="export_settings">export settings</v-btn>
           <v-btn
             block
+            class="my-2"
+            color="secondary"
             @click="
               import_export.content = '';
               import_export.readonly = false;
               import_export.shown = true;
             "
-            class="my-2"
-            color="secondary"
-            >import settings</v-btn
           >
-          <v-btn color="error" block @click="remove_all_shield = !remove_all_shield" class="my-2"
-            >delete all</v-btn
-          >
-          <v-btn v-show="!remove_all_shield" color="error" block @click="remove_all"
-            >I am sure: delete all!</v-btn
-          >
+            import settings
+          </v-btn>
+          <v-btn block class="my-2" color="error" @click="remove_all_shield = !remove_all_shield">
+            delete all
+          </v-btn>
+          <v-btn v-show="!remove_all_shield" block color="error" @click="remove_all">
+            I am sure: delete all!
+          </v-btn>
         </div>
       </v-container>
       <v-dialog v-model="errors.shown">
         <v-alert
           border="start"
+          closable
           :title="errors.title"
           type="error"
           @click:close.stop="errors.shown = false"
-          closable
         >
-          {{ errors.content }}
+          <p v-for="(line, index) in errors.content.split('\n')" :key="index">{{ line }}</p>
         </v-alert>
       </v-dialog>
-      <v-dialog v-model="loading.shown" width="max-content" persistent>
+      <v-dialog v-model="loading.shown" persistent width="max-content">
         <v-list class="py-2" color="primary" elevation="12" rounded="lg">
           <v-list-item prepend-icon="mdi-information-outline" :title="loading.description">
-            <template v-slot:prepend>
+            <template #prepend>
               <div class="pe-4">
-                <v-icon color="primary" size="x-large"></v-icon>
+                <v-icon color="primary" size="x-large" />
               </div>
             </template>
 
-            <template v-slot:append>
+            <template #append>
               <v-progress-circular
+                class="mx-4"
                 color="primary"
                 indeterminate="disable-shrink"
                 size="32"
                 width="3"
-                class="mx-4"
-              ></v-progress-circular>
+              />
             </template>
           </v-list-item>
         </v-list>
@@ -263,18 +271,18 @@
       <v-bottom-sheet v-model="import_export.shown" inset>
         <v-sheet class="pb-12">
           <v-textarea
-            no-resize
-            rows="16"
             v-model="import_export.content"
-            :readonly="import_export.readonly"
             label="exported data"
-          ></v-textarea>
+            no-resize
+            :readonly="import_export.readonly"
+            rows="16"
+          />
           <v-btn
+            block
             color="success"
             prepend-icon="mdi-check-circle"
             @click="import_export.readonly ? (import_export.shown = false) : import_settings()"
-            block
-          ></v-btn>
+          />
         </v-sheet>
       </v-bottom-sheet>
     </main>
@@ -284,18 +292,24 @@
       <button @click="force_retry">click this button</button>.
     </main>
     <main v-else>
-      You need to install the work tracker injector script first, which requires
-      <a href="https://violentmonkey.github.io/" referrerpolicy="no-referrer">Violentmonkey</a>.<br />
-      <a href="./wt-injector.user.js">Click here</a> to install the script, then reload this page.
+      <p>
+        You need to install the work tracker injector script first, which requires
+        <a href="https://violentmonkey.github.io/" referrerpolicy="no-referrer">Violentmonkey</a>.
+      </p>
+      <p>
+        If you have already installed it but still seeing this, your installation is probability outdated.
+      </p>
+      <p><a href="./wt-injector.user.js">Click here</a> to install the script, then reload this page.</p>
     </main>
     <v-footer>
-      <v-row justify="space-between" class="fill-width">
+      <v-row class="fill-width" justify="space-between">
         <v-col style="text-align: center">
           <a
             href="https://github.com/Snake52996/work-tracker/tree/main/src/extension"
             style="text-decoration: none; color: unset"
-            >visit codebase on GitHub</a
           >
+            visit codebase on GitHub
+          </a>
         </v-col>
       </v-row>
     </v-footer>
@@ -303,17 +317,19 @@
 </template>
 
 <script lang="ts" setup>
+import type { Reactive, Ref } from "vue";
+import type { Failure, Result } from "@/types/result";
+import { nextTick, onMounted, reactive, readonly, ref } from "vue";
+import { useGoTo } from "vuetify";
+
 import {
   InjectorConfiguration,
   type InjectorDatabases,
   type InjectorHosts,
   type InjectorScripts,
 } from "./types/configuration";
-
-import type { Ref, Reactive } from "vue";
-import { ref, onMounted, reactive, readonly, nextTick } from "vue";
-import { useGoTo } from "vuetify";
 import { Indicator, type IndicatorState } from "./types/indicator";
+import versions from "./versions.json";
 
 const goto = useGoTo();
 
@@ -372,7 +388,7 @@ function to_local_script(source: InjectorScripts): LocalScript {
 }
 function to_local_host(source: InjectorHosts): LocalHost {
   return {
-    id: crypto.randomUUID(),
+    id: source.id,
     name: source.name,
     host: source.host,
     database: source.database_id,
@@ -440,10 +456,10 @@ function is_modified(local: LocalScript, saved: SavedScript): boolean;
 function is_modified(local: LocalHost, saved: SavedHost): boolean;
 function is_modified(
   local: LocalDatabase | LocalScript | LocalHost,
-  saved: SavedDatabase | SavedScript | SavedHost
+  saved: SavedDatabase | SavedScript | SavedHost,
 ): boolean {
-  //@ts-ignore
-  return Object.keys(saved).some((key) => local[key] !== saved[key]);
+  // @ts-ignore
+  return Object.keys(saved).some(key => local[key] !== saved[key]);
 }
 
 const userscript_ready: Ref<boolean> = ref(false);
@@ -479,31 +495,23 @@ function build_local_structures() {
   modification_times.databases.length = 0;
   modification_times.scripts.length = 0;
 
-  configuration.databases.forEach((database) => {
-    const generate_data = () => ({
-      name: database.name,
-      url: database.url.href,
-    });
-    local_side_components.databases.push({ ...generate_data(), id: database.id, password: "" });
-    saved_local_side_components.databases.push(generate_data());
+  for (const database of configuration.databases) {
+    const local_database = to_local_database(database);
+    local_side_components.databases.push(local_database);
+    saved_local_side_components.databases.push(to_save_database(local_database));
     modification_times.databases.push(database.update_time);
-  });
-  configuration.scripts.forEach((script) => {
-    const generate_data = () => ({
-      name: script.name,
-      type: (script.url === undefined ? "local" : "remote") as "local" | "remote",
-      mode: script.mode,
-      source: script.url?.href ?? script.content,
-    });
-    local_side_components.scripts.push({ ...generate_data(), id: script.id });
-    saved_local_side_components.scripts.push(generate_data());
+  }
+  for (const script of configuration.scripts) {
+    const local_script = to_local_script(script);
+    local_side_components.scripts.push(local_script);
+    saved_local_side_components.scripts.push(to_save_script(local_script));
     modification_times.scripts.push(script.update_time);
-  });
-  configuration.hosts.forEach((host) => {
+  }
+  for (const host of configuration.hosts) {
     const local_host = to_local_host(host);
     local_side_components.hosts.push(local_host);
     saved_local_side_components.hosts.push(to_save_host(local_host));
-  });
+  }
   // place placeholder elements to help creating new elements
   local_side_components.databases.push({ id: "", name: "", url: "", password: "" });
   local_side_components.scripts.push({ id: "", name: "", type: "remote", mode: "module", source: "" });
@@ -523,20 +531,37 @@ const indicator_states = readonly([
   "failed",
 ] as IndicatorState[]);
 onMounted(() => {
-  window.addEventListener("injector-ready", (event) => {
-    script_side_components.configure = (event as CustomEvent<InjectorConfiguration>).detail;
+  window.addEventListener("injector-ready", event => {
+    const load_result = (event as CustomEvent<Result<InjectorConfiguration>>).detail;
+    if (load_result.is_err()) {
+      return;
+    }
+    script_side_components.configure = load_result.unwrap();
+    if (script_side_components.configure.get_interface_version() !== versions.interface_version) {
+      return; // terminate since the interface version mismatched
+    }
     script_side_components.configure
-      .lock((modified) => {
-        modified.databases.forEach((database) => {
-          const index = local_side_components.databases.findIndex((item) => item.id === database.id);
+      .lock(modified => {
+        if (modified.is_err()) {
+          _display_failure_as_error(modified.unwrap_error());
+          return;
+        }
+        const { databases, scripts } = modified.unwrap();
+        for (const database of databases) {
+          const index = local_side_components.databases.findIndex(item => item.id === database.id);
           modification_times.databases[index] = database.time;
-        });
-        modified.scripts.forEach((script) => {
-          const index = local_side_components.scripts.findIndex((item) => item.id === script.id);
+        }
+        for (const script of scripts) {
+          const index = local_side_components.scripts.findIndex(item => item.id === script.id);
           modification_times.scripts[index] = script.time;
-        });
+        }
       })
-      .then(() => {
+      .then(result => {
+        if (result.is_err()) {
+          _display_failure_as_error(result.unwrap_error());
+          userscript_locked.value = true;
+          return;
+        }
         window.addEventListener("beforeunload", () => {
           script_side_components.configure!.unlock();
         });
@@ -545,17 +570,14 @@ onMounted(() => {
         {
           const css = document.createElement("style");
           css.textContent = Indicator.get_css();
-          document.head.appendChild(css);
+          document.head.append(css);
         }
         nextTick().then(() => {
-          indicator_states.forEach((state) => {
-            const indicator = new Indicator(document.getElementById(`indicator-${state}`)!);
+          for (const state of indicator_states) {
+            const indicator = new Indicator(document.querySelector(`#indicator-${state}`)!);
             indicator.state = state;
-          });
+          }
         });
-      })
-      .catch((error) => {
-        userscript_locked.value = true;
       });
   });
 });
@@ -570,6 +592,17 @@ const loading: Reactive<{ shown: boolean; description: string }> = reactive({
   description: "",
 });
 
+function _display_error(title: string, content?: string) {
+  errors.title = title;
+  errors.content = content ?? "";
+  errors.shown = true;
+}
+
+function _display_failure_as_error(failure: Failure) {
+  _display_error(failure.brief, failure.detail);
+  console.warn(failure.stack);
+}
+
 async function _rpc_wrapper(callable: () => Promise<void>, brief: string) {
   try {
     loading.description = `Making change: ${brief}...`;
@@ -577,33 +610,32 @@ async function _rpc_wrapper(callable: () => Promise<void>, brief: string) {
     await callable();
     loading.shown = false;
   } catch (error) {
-    errors.title = `Failed to ${brief}`;
-    errors.content = String(error);
+    _display_error(`Failed to ${brief}`, String(error));
     loading.shown = false;
     errors.shown = true;
+    console.log(error);
   }
 }
 
 function create_database() {
   const configuration = script_side_components.configure!;
   _rpc_wrapper(async () => {
-    const new_local_database = local_side_components.databases[local_side_components.databases.length - 1]!;
+    const new_local_database = local_side_components.databases.at(-1)!;
     const database = await configuration.new_database(
       new_local_database.name,
       new_local_database.url,
-      new_local_database.password
+      new_local_database.password,
     );
-    local_side_components.databases.splice(local_side_components.databases.length - 1, 0, {
-      name: database.name,
-      url: database.url.href,
-      id: database.id,
-      password: "",
-    });
-    saved_local_side_components.databases.push({ name: database.name, url: database.url.href });
-    modification_times.databases.push(database.update_time);
-    new_local_database.name = "";
-    new_local_database.password = "";
-    new_local_database.url = "";
+    if (database.is_err()) {
+      _display_failure_as_error(database.unwrap_error());
+      return;
+    }
+    const received_database = database.unwrap();
+    const received_local_database = to_local_database(received_database);
+    local_side_components.databases.splice(-1, 0, received_local_database);
+    saved_local_side_components.databases.push(to_save_database(received_local_database));
+    modification_times.databases.push(received_database.update_time);
+    clear_database(new_local_database);
   }, "create database");
 }
 function update_database(index: number) {
@@ -613,23 +645,32 @@ function update_database(index: number) {
     const original = saved_local_side_components.databases[index]!;
     const id = modified.id;
     const modifications = {
-      name: modified.name !== original.name ? modified.name : undefined,
-      url: modified.url !== original.url ? modified.url : undefined,
-      password: modified.password.length !== 0 ? modified.password : undefined,
+      name: modified.name === original.name ? undefined : modified.name,
+      url: modified.url === original.url ? undefined : modified.url,
+      password: modified.password.length === 0 ? undefined : modified.password,
     };
     const updated_database = await configuration.update_database(id, modifications);
-    modified.name = updated_database.name;
-    modified.url = updated_database.url.href;
+    if (updated_database.is_err()) {
+      _display_failure_as_error(updated_database.unwrap_error());
+      return;
+    }
+    const received_database = updated_database.unwrap();
+    modified.name = received_database.name;
+    modified.url = received_database.url.href;
     modified.password = "";
     original.name = modified.name;
     original.url = modified.url;
-    modification_times.databases[index] = updated_database.update_time;
+    modification_times.databases[index] = received_database.update_time;
   }, "update database");
 }
 function remove_database(index: number) {
   const configuration = script_side_components.configure!;
   _rpc_wrapper(async () => {
-    await configuration.remove_database(local_side_components.databases[index]!.id);
+    const result = await configuration.remove_database(local_side_components.databases[index]!.id);
+    if (result.is_err()) {
+      _display_failure_as_error(result.unwrap_error());
+      return;
+    }
     local_side_components.databases.splice(index, 1);
     saved_local_side_components.databases.splice(index, 1);
     modification_times.databases.splice(index, 1);
@@ -639,22 +680,16 @@ function create_script(script: LocalScript) {
   const configuration = script_side_components.configure!;
   _rpc_wrapper(async () => {
     const new_script = await configuration.new_script(script.name, script.type, script.mode, script.source);
-    local_side_components.scripts.splice(local_side_components.scripts.length - 1, 0, {
-      id: new_script.id,
-      name: new_script.name,
-      type: new_script.url === undefined ? "local" : "remote",
-      mode: new_script.mode,
-      source: new_script.url === undefined ? new_script.content : new_script.url.href,
-    });
-    saved_local_side_components.scripts.push({
-      name: new_script.name,
-      type: new_script.url === undefined ? "local" : "remote",
-      mode: new_script.mode,
-      source: new_script.url === undefined ? new_script.content : new_script.url.href,
-    });
-    modification_times.scripts.push(new_script.update_time);
-    script.name = "";
-    script.source = "";
+    if (new_script.is_err()) {
+      _display_failure_as_error(new_script.unwrap_error());
+      return;
+    }
+    const new_remote_script = new_script.unwrap();
+    const new_local_script = to_local_script(new_remote_script);
+    local_side_components.scripts.splice(-1, 0, new_local_script);
+    saved_local_side_components.scripts.push(to_save_script(new_local_script));
+    modification_times.scripts.push(new_remote_script.update_time);
+    clear_script(script);
   }, "create script");
 }
 function update_script(index: number) {
@@ -664,12 +699,17 @@ function update_script(index: number) {
     const original = saved_local_side_components.scripts[index]!;
     const id = modified.id;
     const modifications = {
-      name: modified.name !== original.name ? modified.name : undefined,
-      mode: modified.mode !== original.mode ? modified.mode : undefined,
-      type: modified.type !== original.type ? modified.type : undefined,
-      source: modified.source !== original.source ? modified.source : undefined,
+      name: modified.name === original.name ? undefined : modified.name,
+      mode: modified.mode === original.mode ? undefined : modified.mode,
+      type: modified.type === original.type ? undefined : modified.type,
+      source: modified.source === original.source ? undefined : modified.source,
     };
-    const updated_script = await configuration.update_script(id, modifications);
+    const update_result = await configuration.update_script(id, modifications);
+    if (update_result.is_err()) {
+      _display_failure_as_error(update_result.unwrap_error());
+      return;
+    }
+    const updated_script = update_result.unwrap();
     modified.name = updated_script.name;
     modified.mode = updated_script.mode;
     modified.type = updated_script.url === undefined ? "local" : "remote";
@@ -684,7 +724,11 @@ function update_script(index: number) {
 function remove_script(index: number) {
   const configuration = script_side_components.configure!;
   _rpc_wrapper(async () => {
-    await configuration.remove_script(local_side_components.scripts[index]!.id);
+    const result = await configuration.remove_script(local_side_components.scripts[index]!.id);
+    if (result.is_err()) {
+      _display_failure_as_error(result.unwrap_error());
+      return;
+    }
     local_side_components.scripts.splice(index, 1);
     saved_local_side_components.scripts.splice(index, 1);
     modification_times.scripts.splice(index, 1);
@@ -693,12 +737,15 @@ function remove_script(index: number) {
 function create_host(host: LocalHost) {
   const configuration = script_side_components.configure!;
   _rpc_wrapper(async () => {
-    const new_host = await configuration.new_host(host.name, host.host, host.database, host.script);
-    const local_host = to_local_host(new_host);
-    local_side_components.hosts.splice(local_side_components.hosts.length - 1, 0, local_host);
+    const create_result = await configuration.new_host(host.name, host.host, host.database, host.script);
+    if (create_result.is_err()) {
+      _display_failure_as_error(create_result.unwrap_error());
+      return;
+    }
+    const local_host = to_local_host(create_result.unwrap());
+    local_side_components.hosts.splice(-1, 0, local_host);
     saved_local_side_components.hosts.push(to_save_host(local_host));
-    host.name = "";
-    host.host = "";
+    clear_host(host);
   }, "create host");
 }
 function update_host(index: number) {
@@ -706,12 +753,17 @@ function update_host(index: number) {
   _rpc_wrapper(async () => {
     const host = local_side_components.hosts[index]!;
     const backup = saved_local_side_components.hosts[index]!;
-    const updated = await configuration.update_host(host.name, {
+    const update_result = await configuration.update_host(host.id, {
       name: host.name === backup.name ? undefined : host.name,
       matcher: host.host === backup.host ? undefined : host.host,
       database_id: host.database === backup.database ? undefined : host.database,
       script_id: host.script === backup.script ? undefined : host.script,
     });
+    if (update_result.is_err()) {
+      _display_failure_as_error(update_result.unwrap_error());
+      return;
+    }
+    const updated = update_result.unwrap();
     host.name = updated.name;
     backup.name = updated.name;
     host.host = updated.host;
@@ -726,7 +778,11 @@ function remove_host(index: number) {
   const configuration = script_side_components.configure!;
   _rpc_wrapper(async () => {
     const host = local_side_components.hosts[index]!;
-    await configuration.remove_host(host.name);
+    const result = await configuration.remove_host(host.id);
+    if (result.is_err()) {
+      _display_failure_as_error(result.unwrap_error());
+      return;
+    }
     local_side_components.hosts.splice(index, 1);
     saved_local_side_components.hosts.splice(index, 1);
   }, "update host");
@@ -737,24 +793,40 @@ function update_all() {
   _rpc_wrapper(async () => {
     const failed_targets: string[] = [];
     const databases = local_side_components.databases.map(async (database, index) => {
-      try {
-        const modified_database = await configuration.update_database(database.id, {});
-        local_side_components.databases[index] = to_local_database(modified_database);
-      } catch (error) {
-        failed_targets.push(`database-${database.name}: ${String(error)}`);
+      if (index === local_side_components.databases.length - 1) {
+        return;
       }
+      const update_result = await configuration.update_database(database.id, {});
+      if (update_result.is_err()) {
+        failed_targets.push(`database-${database.name}: ${update_result.unwrap_error()}`);
+        return;
+      }
+      local_side_components.databases[index] = to_local_database(update_result.unwrap());
     });
     const scripts = local_side_components.scripts.map(async (script, index) => {
-      try {
-        const modified_scripts = await configuration.update_script(script.id, {});
-        local_side_components.scripts[index] = to_local_script(modified_scripts);
-      } catch (error) {
-        failed_targets.push(`script-${script.name}: ${String(error)}`);
+      if (index === local_side_components.scripts.length - 1) {
+        return;
       }
+      const update_result = await configuration.update_script(script.id, {});
+      if (update_result.is_err()) {
+        failed_targets.push(`script-${script.name}: ${update_result.unwrap_error()}`);
+        return;
+      }
+      local_side_components.scripts[index] = to_local_script(update_result.unwrap());
     });
-    await Promise.allSettled(databases.concat(scripts));
+    const results = await Promise.allSettled(databases.concat(scripts));
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        continue;
+      }
+      failed_targets.push(`unknown uncaptured error: ${result.reason}`);
+      console.log(result.reason);
+    }
     if (failed_targets.length > 0) {
-      throw Error("This is caused by following errors: " + failed_targets.join("; "));
+      _display_error(
+        "Following errors occurred and corresponding elements are not updated",
+        failed_targets.join("\n"),
+      );
     }
   }, "update all");
 }
@@ -769,7 +841,7 @@ async function export_settings() {
   const data = configuration.toJSON();
   try {
     await navigator.clipboard.writeText(data);
-  } catch (error) {
+  } catch {
     import_export.content = data;
     import_export.readonly = true;
     import_export.shown = true;
@@ -780,7 +852,11 @@ async function import_settings() {
   const settings = import_export.content;
   import_export.shown = false;
   _rpc_wrapper(async () => {
-    configuration.replace_with_JSON(settings);
+    const result = configuration.replace_with_JSON(settings);
+    if (result.is_err()) {
+      _display_failure_as_error(result.unwrap_error());
+      return;
+    }
     build_local_structures();
   }, "import settings");
 }
@@ -789,7 +865,11 @@ async function remove_all() {
   const configuration = script_side_components.configure!;
   _rpc_wrapper(async () => {
     const empty_settings = new InjectorConfiguration();
-    configuration.replace_with_JSON(empty_settings.toJSON());
+    const result = configuration.replace_with_JSON(empty_settings.toJSON());
+    if (result.is_err()) {
+      _display_failure_as_error(result.unwrap_error());
+      return;
+    }
     build_local_structures();
   }, "remove everything");
 }

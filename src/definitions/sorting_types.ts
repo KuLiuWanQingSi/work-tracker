@@ -1,4 +1,4 @@
-export const enum Sorting {
+export enum Sorting {
   Disabled = "disabled",
   AsString = "as_string",
   AsNumber = "as_number",

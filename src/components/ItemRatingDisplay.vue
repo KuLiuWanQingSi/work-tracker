@@ -1,13 +1,12 @@
 <template>
   <div class="fill-width">
     <v-rating
-      :length="(configuration as DatasourceEntryRatingExtraConfiguration).maximum_score"
       v-model="(data as RatingEntryData).score"
-      readonly
-      density="comfortable"
       class="fill-width mx-auto"
-    >
-    </v-rating>
+      density="comfortable"
+      :length="(configuration as DatasourceEntryRatingExtraConfiguration).maximum_score"
+      readonly
+    />
     <p v-if="comment[0]">{{ comment[0] }}</p>
     <p v-if="comment[1]">{{ comment[1] }}</p>
   </div>

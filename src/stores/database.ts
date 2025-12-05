@@ -1,3 +1,11 @@
+import type { Ref } from "vue";
+import type { LoadedImage } from "@/procedures/item-migrant";
+import type { Datasource } from "@/types/datasource";
+import type { DataItem } from "@/types/datasource-data";
+import type { RatingEntryData, StringEntryData, TagEntryData } from "@/types/datasource-entry";
+import { defineStore } from "pinia";
+import { computed, ref } from "vue";
+import { i18n } from "@/locales";
 import { encrypt_datasource, encrypt_image, EncryptMessageLimit } from "@/procedures/crypto";
 import { open_image } from "@/procedures/crypto-readonly";
 import {
@@ -8,27 +16,19 @@ import {
   place_image,
   to_thumbnail_size,
 } from "@/procedures/image-utils";
-import type { LoadedImage } from "@/procedures/item-migrant";
 import { make_database_pack } from "@/procedures/packing-utils";
 import { save_to_local } from "@/procedures/save-to-local";
-import { attempts_to } from "@/procedures/utilities";
-import type { Datasource } from "@/types/datasource";
-import type { DataItem } from "@/types/datasource-data";
-import type { RatingEntryData, StringEntryData, TagEntryData } from "@/types/datasource-entry";
-import { ImageImageFormat, ThumbnailImageFormat, type ImageFormatSpecification } from "@/types/image-types";
-import { ItemInvalidType, type InvalidDuplicatedValue, type ItemInvalidReason } from "@/types/invalid-items";
-import { i18n } from "@/locales";
 
-import { defineStore } from "pinia";
-import type { Ref } from "vue";
-import { computed, ref } from "vue";
+import { attempts_to } from "@/procedures/utilities";
+import { type ImageFormatSpecification, ImageImageFormat, ThumbnailImageFormat } from "@/types/image-types";
+import { type InvalidDuplicatedValue, type ItemInvalidReason, ItemInvalidType } from "@/types/invalid-items";
 
 const { t } = i18n.global;
 
 interface iTagPatch {
-  register_tags(entry_name: string, new_tags: string[]): number[];
-  confirm(): void;
-  cancel(): void;
+  register_tags: (entry_name: string, new_tags: string[]) => number[];
+  confirm: () => void;
+  cancel: () => void;
 }
 
 interface InternalState {
@@ -81,7 +81,7 @@ export const useDatabaseStore = defineStore("database", () => {
     return database_.value!.configurations.entry.image_size!;
   });
   const entries = computed(() => {
-    return database_.value?.configurations.entry.entries!;
+    return database_.value!.configurations.entry.entries;
   });
 
   // mapping: data_id -> data
@@ -131,27 +131,29 @@ export const useDatabaseStore = defineStore("database", () => {
 
     // extract image batch allocation status
     if (database_.value.images !== undefined) {
-      database_.value.images.pools.forEach((pool) => {
+      for (const pool of database_.value.images.pools) {
         image_pools.set(pool.name, pool.bitmap);
-      });
+      }
     }
 
     // register unique entries and their values to allow fast verification later
-    database.configurations.entry.entries.forEach((entry_config) => {
+    for (const entry_config of database.configurations.entry.entries) {
       if (entry_config.type !== "string" || entry_config.unique !== true) {
-        return;
+        continue;
       }
       const values: Set<string> = new Set();
-      data.value.forEach((data) => {
-        // the entries field must not be undefined since we do have entries configured in this database
-        const value = data.entries!.get(entry_config.name);
+      for (const item of data.value.values()) {
+        // the entries field of the item must not be undefined
+        //  since we do have entries configured in this database
+        const value = item.entries!.get(entry_config.name);
+        // however, this entry can be missing for this item if the entry is optional
         if (value === undefined) {
           return;
         }
         values.add((value as StringEntryData).value);
-      });
+      }
       internal_states.unique_entries.set(entry_config.name, values);
-    });
+    }
   }
 
   // load an (encrypted) image with the file loader and decrypt it for later usage
@@ -193,22 +195,22 @@ export const useDatabaseStore = defineStore("database", () => {
   //    internal_states.images
   //  since this function takes care of freeing old (replaced) Blob URLs
   function place_image_cache(runtime_id: string, data: { image?: string; thumbnail?: string }) {
-    [
+    for (const { new_url, caching } of [
       { new_url: data.image, caching: internal_states.images },
       { new_url: data.thumbnail, caching: internal_states.thumbnails },
-    ].forEach(({ new_url, caching }) => {
+    ]) {
       if (new_url === undefined) {
-        return;
+        continue;
       }
       const current_value = caching.get(runtime_id);
       if (current_value === new_url) {
-        return;
+        continue;
       }
       caching.set(runtime_id, new_url);
       if (current_value !== undefined) {
         URL.revokeObjectURL(current_value);
       }
-    });
+    }
   }
 
   // try to get cached image for an item, return undefined if the image is not yet loaded into memory
@@ -281,7 +283,7 @@ export const useDatabaseStore = defineStore("database", () => {
         if ((value & shifted) === 0) {
           return {
             index: i,
-            shifted: shifted,
+            shifted,
           };
         }
       }
@@ -294,36 +296,32 @@ export const useDatabaseStore = defineStore("database", () => {
       if (bitmap.length != ImagePoolConfiguration.rows) {
         throw Error;
       }
-      let result: number | null = null;
-      bitmap.forEach((value, index, array) => {
-        if (result !== null) {
-          return;
-        }
+      for (const [index, value] of bitmap.entries()) {
         if (value === 255) {
-          return;
+          continue;
         }
         const bit_location = find_clear_bit(value);
-        result = index * ImagePoolConfiguration.columns + bit_location.index;
-        array[index]! += bit_location.shifted;
-      });
-      return result;
+        bitmap[index]! += bit_location.shifted;
+        return index * ImagePoolConfiguration.columns + bit_location.index;
+      }
+      return null;
     }
     for (const [name, bitmap] of image_pools.entries()) {
       const index = get_first_free_index(bitmap);
       if (index !== null) {
         internal_states.modified_images.value.add(name);
-        return { name: name, index: index };
+        return { name, index };
       }
     }
     // make a new image
-    const name = generate_uuid_internal((uuid) => image_pools.has(uuid));
+    const name = generate_uuid_internal(uuid => image_pools.has(uuid));
     const thumbnail_pool = create_empty_pool(to_thumbnail_size(image_size.value));
     internal_states.modified_images.value.add(name);
     internal_states.loaded_thumbnail_pools.set(name, thumbnail_pool);
     const new_bitmap = new Uint8Array(ImagePoolConfiguration.rows);
     new_bitmap[0] = 1;
     image_pools.set(name, new_bitmap);
-    return { name: name, index: 0 };
+    return { name, index: 0 };
   }
 
   // add a thumbnail to the database
@@ -335,7 +333,7 @@ export const useDatabaseStore = defineStore("database", () => {
     replace?: {
       name: string;
       index: number;
-    }
+    },
   ) {
     // find the target slot to place image in
     //  if we are replacing, get the slot used to store image for this item
@@ -352,7 +350,7 @@ export const useDatabaseStore = defineStore("database", () => {
       thumbnail_pool,
       slot.index,
       thumbnail,
-      to_thumbnail_size(image_size.value)
+      to_thumbnail_size(image_size.value),
     );
     // replace the thumbnail pool
     internal_states.loaded_thumbnail_pools.set(slot.name, modified_thumbnail_pool);
@@ -363,7 +361,7 @@ export const useDatabaseStore = defineStore("database", () => {
 
   // acquire a new unique runtime id for data item
   function acquire_new_runtime_id() {
-    return generate_uuid_internal((uuid) => data.value.has(uuid));
+    return generate_uuid_internal(uuid => data.value.has(uuid));
   }
 
   // structure holding tags to be registered into different entries
@@ -389,7 +387,7 @@ export const useDatabaseStore = defineStore("database", () => {
       const patch_target = this.#cached_tags.get(entry_name)!;
       const existing_tags = tags.value.get(entry_name);
       const modifier = existing_tags?.length ?? 0;
-      return new_tags.map((tag_string) => {
+      return new_tags.map(tag_string => {
         const registered_id = existing_tags?.indexOf(tag_string);
         if (registered_id !== undefined && registered_id !== -1) {
           return registered_id;
@@ -406,19 +404,19 @@ export const useDatabaseStore = defineStore("database", () => {
 
     // apply the modifications
     public confirm() {
-      this.#cached_tags.forEach((new_tags, entry_name) => {
+      for (const [entry_name, new_tags] of this.#cached_tags.entries()) {
         const ordered_tags = Array.from(new_tags.entries(), ([content, index]) => ({
-          content: content,
-          index: index,
+          content,
+          index,
         }))
-          .sort(({ index: lhs }, { index: rhs }) => lhs - rhs)
-          .map((value) => value.content);
+          .toSorted(({ index: lhs }, { index: rhs }) => lhs - rhs)
+          .map(value => value.content);
         if (tags.value.has(entry_name)) {
           tags.value.get(entry_name)!.push(...ordered_tags);
         } else {
           tags.value.set(entry_name, ordered_tags);
         }
-      });
+      }
       this.#cached_tags.clear();
     }
 
@@ -444,6 +442,9 @@ export const useDatabaseStore = defineStore("database", () => {
     }
     if (old_data.image !== undefined && new_data.image !== undefined) {
       // since image is never optional, image must exist of be missing for both item at the same time
+      // we allow a single if that could have been merged here since merging it makes really a long condition
+      //  such long condition harms readability
+      // eslint-disable-next-line unicorn/no-lonely-if
       if (old_data.image.index != new_data.image.index || old_data.image.name !== new_data.image.name) {
         return true;
       }
@@ -465,28 +466,32 @@ export const useDatabaseStore = defineStore("database", () => {
         // since they have the same .has result on the name, both of them must be undefined
         return false;
       }
-      if (entry_configuration.type === "string") {
-        return (old_entry_data_ as StringEntryData).value !== (new_entry_data_ as StringEntryData).value;
-      } else if (entry_configuration.type === "rating") {
-        const old_entry_data = old_entry_data_ as RatingEntryData;
-        const new_entry_data = new_entry_data_ as RatingEntryData;
-        return (
-          old_entry_data.score !== new_entry_data.score || old_entry_data.comment !== new_entry_data.comment
-        );
-      } else if (entry_configuration.type === "tag") {
-        const old_entry_data = old_entry_data_ as TagEntryData;
-        const new_entry_data = new_entry_data_ as TagEntryData;
-        if (old_entry_data.tags.length !== new_entry_data.tags.length) {
-          return true;
+      switch (entry_configuration.type) {
+        case "string": {
+          return (old_entry_data_ as StringEntryData).value !== (new_entry_data_ as StringEntryData).value;
         }
-        return (old_entry_data_ as TagEntryData).tags.reduce((last, old_tag, index): boolean => {
-          if (last) {
+        case "rating": {
+          const old_entry_data = old_entry_data_ as RatingEntryData;
+          const new_entry_data = new_entry_data_ as RatingEntryData;
+          return (
+            old_entry_data.score !== new_entry_data.score || old_entry_data.comment !== new_entry_data.comment
+          );
+        }
+        case "tag": {
+          const old_entry_data = old_entry_data_ as TagEntryData;
+          const new_entry_data = new_entry_data_ as TagEntryData;
+          if (old_entry_data.tags.length !== new_entry_data.tags.length) {
             return true;
           }
-          return old_tag !== new_entry_data.tags[index];
-        }, false);
+          return (old_entry_data_ as TagEntryData).tags.reduce((last, old_tag, index): boolean => {
+            if (last) {
+              return true;
+            }
+            return old_tag !== new_entry_data.tags[index];
+          }, false);
+        }
+        // No default
       }
-      throw Error;
     }, false);
     return result;
   }
@@ -505,7 +510,7 @@ export const useDatabaseStore = defineStore("database", () => {
       runtime_id?: string;
       source: DataItem;
       images?: LoadedImage;
-    }[]
+    }[],
   ): Promise<{ index: number; reason: ItemInvalidReason }[]> {
     // check the item first
     const failures: { index: number; reason: ItemInvalidReason }[] = [];
@@ -515,12 +520,12 @@ export const useDatabaseStore = defineStore("database", () => {
       // we cache the newly collected unique values for appending them later, if this batch of data is allowed
       //  to be merged into the database
       const pending_unique_values: Map<string, Set<string>> = new Map();
-      internal_states.unique_entries.forEach((values, entry_name) => {
+      for (const [entry_name, values] of internal_states.unique_entries.entries()) {
         const new_unique_values: Set<string> = new Set();
-        items.forEach(({ runtime_id, source }, index) => {
+        for (const [index, { runtime_id, source }] of items.entries()) {
           const data_ = source.entries!.get(entry_name);
           if (data_ === undefined) {
-            return;
+            continue;
           }
           const new_data = data_ as StringEntryData;
           if (
@@ -567,15 +572,15 @@ export const useDatabaseStore = defineStore("database", () => {
               key: entry_name,
               value: new_data.value,
             };
-            failures.push({ index: index, reason: error });
-            return;
+            failures.push({ index, reason: error });
+            continue;
           }
           new_unique_values.add(new_data.value);
-        });
+        }
         pending_unique_values.set(entry_name, new_unique_values);
-      });
+      }
 
-      if (failures.length !== 0) {
+      if (failures.length > 0) {
         // terminate
         break;
       }
@@ -585,14 +590,15 @@ export const useDatabaseStore = defineStore("database", () => {
       const modified_items = items
         .map(({ runtime_id, source, images }) => ({
           runtime_id: runtime_id ?? acquire_new_runtime_id(),
-          source: source,
-          images: images,
+          source,
+          images,
         }))
         .filter(
           ({ runtime_id, source, images }) =>
-            compare_data_item(data.value.get(runtime_id), source) || (has_image.value && images !== undefined)
+            compare_data_item(data.value.get(runtime_id), source) ||
+            (has_image.value && images !== undefined),
         );
-      if (modified_items.length !== 0) {
+      if (modified_items.length > 0) {
         internal_states.data_modified.value = true;
       }
       // we may now apply modifications to tags
@@ -611,17 +617,21 @@ export const useDatabaseStore = defineStore("database", () => {
         }
       }
       // merge the newly collected unique values
-      pending_unique_values.forEach((new_unique_values, entry_name) => {
+      for (const [entry_name, new_unique_values] of pending_unique_values.entries()) {
         internal_states.unique_entries.set(
           entry_name,
-          new_unique_values.union(internal_states.unique_entries.get(entry_name)!)
+          new_unique_values.union(internal_states.unique_entries.get(entry_name)!),
         );
-      });
+      }
       // finally, place the items themselves
-      modified_items.forEach(({ runtime_id, source }) => {
+      for (const { runtime_id, source } of modified_items) {
         data.value.set(runtime_id, source);
-      });
-    } while (false);
+      }
+      // eslint-disable-next-line no-constant-condition
+    } while (false); // do-while false here to allow flexible jumping-outs
+    // Since this is a big block of code with multiple points at which we might decide to terminate its
+    //  execution but always with the same post-processing step. This is a common case to use do-while-false
+    //  to group statements together
     return failures;
   }
 
@@ -629,14 +639,14 @@ export const useDatabaseStore = defineStore("database", () => {
   function query_image_pool_allocation(): { name: string; allocations: boolean[] }[] {
     return [...image_pools.entries()].map(([name, bitmap]) => {
       const allocations: boolean[] = [];
-      bitmap.forEach((byte_man) => {
+      for (const byte_man of bitmap) {
         for (let i = 0; i < 8; i++) {
           allocations.push((byte_man & (1 << i)) !== 0);
         }
-      });
+      }
       return {
-        name: name,
-        allocations: allocations,
+        name,
+        allocations,
       };
     });
   }
@@ -644,7 +654,7 @@ export const useDatabaseStore = defineStore("database", () => {
   // if the database is modified
   //  this value will be true if the main data file or any of the image pools is modified
   const database_modified = computed(() => {
-    return internal_states.data_modified.value || internal_states.modified_images.value.size !== 0;
+    return internal_states.data_modified.value || internal_states.modified_images.value.size > 0;
   });
 
   // procedures saving the database into files
@@ -674,47 +684,47 @@ export const useDatabaseStore = defineStore("database", () => {
     const encryption_key = internal_states.new_data_key ?? database_.value!.runtime.protection.key;
     // load, encrypt and store all images listed in the parameter
     const { add_from_string, add_from_blob, finalize } = make_database_pack(
-      database_.value?.configurations.global.name!
+      database_.value!.configurations.global.name,
     );
     const results = await attempts_to(
-      images.map((image_name) => async (): Promise<void> => {
+      images.map(image_name => async (): Promise<void> => {
         // the name can either refers to a thumbnail pool or to a full image, we need to check this
         if (image_pools.has(image_name)) {
           // it must be a thumbnail pool if the name can be found associated with an allocation bitmap
           const pool = await get_thumbnail_pool(image_name);
           if (pool === null) {
-            throw Error(t("message.error.cannot_find_image", { name: image_name }));
+            throw new Error(t("message.error.cannot_find_image", { name: image_name }));
           }
           add_from_blob(
             `${image_name}${ThumbnailImageFormat.extension}`,
             await encrypt_image(
               await encode_image(pool, ThumbnailImageFormat),
               ThumbnailImageFormat,
-              encryption_key
-            )
+              encryption_key,
+            ),
           );
         } else {
           // otherwise, it must be a full image
           const image_url = await get_image(image_name);
           if (image_url === "") {
-            throw Error(t("message.error.cannot_find_image", { name: image_name }));
+            throw new Error(t("message.error.cannot_find_image", { name: image_name }));
           }
           const image = await (await fetch(image_url)).blob();
           add_from_blob(
             `${image_name}${ImageImageFormat.extension}`,
-            await encrypt_image(image, ImageImageFormat, encryption_key)
+            await encrypt_image(image, ImageImageFormat, encryption_key),
           );
         }
-      })
+      }),
     );
     // check if all image are loaded successfully
-    const failed_loads = results.filter((result) => !result.succeed);
+    const failed_loads = results.filter(result => !result.succeed);
     if (failed_loads.length > 0) {
       const message =
         t("message.error.failed_to_fetch_all_images") +
         "\n" +
         failed_loads.map(({ reason }) => String(reason)).join("\n");
-      throw Error(message);
+      throw new Error(message);
     }
 
     // build new database, encrypt it and add to the package
@@ -725,7 +735,7 @@ export const useDatabaseStore = defineStore("database", () => {
       protection: { encrypted_counter: database_.value!.protection.encrypted_counter + messages_to_encrypt },
       configurations: database_.value!.configurations,
       images: has_image.value
-        ? { pools: Array.from(image_pools.entries(), ([name, bitmap]) => ({ name: name, bitmap: bitmap })) }
+        ? { pools: Array.from(image_pools.entries(), ([name, bitmap]) => ({ name, bitmap })) }
         : undefined,
       tags: tags.value.size === 0 ? undefined : tags.value,
       data: data.value,
@@ -762,12 +772,12 @@ export const useDatabaseStore = defineStore("database", () => {
       //  re-encrypted with the new data key
       if (has_image.value) {
         // mark all images as modified
-        data.value.forEach((_, runtime_id) => {
+        for (const runtime_id of data.value.keys()) {
           internal_states.modified_images.value.add(runtime_id);
-        });
-        image_pools.forEach((_, name) => {
+        }
+        for (const name of image_pools.keys()) {
           internal_states.modified_images.value.add(name);
-        });
+        }
       }
 
       // store the new key

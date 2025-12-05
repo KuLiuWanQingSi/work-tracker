@@ -1,10 +1,10 @@
+import type { DataItem } from "./datasource-data";
+import type { DatasourceEntryConfiguration } from "./datasource-entry-details";
 import { Sorting } from "@/definitions/sorting_types";
 import { i18n } from "@/locales";
 import { entry_matcher } from "@/procedures/searching-support";
 import { sorting_date_to_string, sorting_number_to_string, to_sorting } from "@/procedures/sorting";
 import { useDatabaseStore } from "@/stores/database";
-import type { DataItem } from "./datasource-data";
-import type { DatasourceEntryConfiguration } from "./datasource-entry-details";
 
 const t = i18n.global.t;
 
@@ -15,10 +15,6 @@ export interface iSearchNode {
 
 export abstract class iLogicalSearchNode implements iSearchNode {
   children: iSearchNode[] = [];
-  abstract short_circuit(calculated: boolean): boolean;
-  abstract reducer(calculated: boolean, current: boolean): boolean;
-  abstract starter(): boolean;
-  abstract explain(): string;
 
   public evaluate(item: DataItem): boolean {
     if (this.children.length === 0) {
@@ -31,39 +27,52 @@ export abstract class iLogicalSearchNode implements iSearchNode {
       return this.reducer(calculated, current_child.evaluate(item));
     }, this.starter());
   }
+
   public add_child(child: iSearchNode) {
     this.children.push(child);
   }
+
   public remove_child(child: iSearchNode) {
-    this.children = this.children.filter((item) => item !== child);
+    this.children = this.children.filter(item => item !== child);
   }
+
+  abstract short_circuit(calculated: boolean): boolean;
+  abstract reducer(calculated: boolean, current: boolean): boolean;
+  abstract starter(): boolean;
+  abstract explain(): string;
 }
 export class AndSearchNode extends iLogicalSearchNode {
   short_circuit(calculated: boolean): boolean {
     return !calculated;
   }
+
   reducer(calculated: boolean, current: boolean): boolean {
     return calculated && current;
   }
+
   starter(): boolean {
     return true;
   }
+
   explain(): string {
-    return this.children.map((child) => child.explain()).join(t("logical.and"));
+    return this.children.map(child => child.explain()).join(t("logical.and"));
   }
 }
 export class OrSearchNode extends iLogicalSearchNode {
   short_circuit(calculated: boolean): boolean {
     return calculated;
   }
+
   reducer(calculated: boolean, current: boolean): boolean {
     return calculated || current;
   }
+
   starter(): boolean {
     return false;
   }
+
   explain(): string {
-    return this.children.map((child) => child.explain()).join(t("logical.or"));
+    return this.children.map(child => child.explain()).join(t("logical.or"));
   }
 }
 export class NotSearchNode implements iSearchNode {
@@ -71,9 +80,11 @@ export class NotSearchNode implements iSearchNode {
   constructor(child: iSearchNode) {
     this.#child = child;
   }
+
   public evaluate(item: DataItem): boolean {
     return !this.#child.evaluate(item);
   }
+
   explain(): string {
     return `${t("logical.not")}${this.#child.explain()}`;
   }
@@ -85,6 +96,7 @@ export class GeneralTextSearchNode implements iSearchNode {
     this.#text = value;
     this.#entries = entries;
   }
+
   public evaluate(item: DataItem): boolean {
     // we try no exact match on each entry
     return this.#entries.some((entry_config): boolean => {
@@ -96,6 +108,7 @@ export class GeneralTextSearchNode implements iSearchNode {
       return result;
     });
   }
+
   explain(): string {
     return t("acTion.includes", [this.#text]);
   }
@@ -106,10 +119,12 @@ export class BasicEntrySearchNode implements iSearchNode {
   constructor(config: DatasourceEntryConfiguration) {
     this.entry_config = config;
   }
+
   public evaluate(item: DataItem): boolean {
     const result = item.entries?.has(this.entry_config.name) ?? false;
     return result;
   }
+
   explain(): string {
     return t("acTion.includes_entry", [this.entry_config.name]);
   }
@@ -121,12 +136,14 @@ export class PartialEntrySearchNode extends BasicEntrySearchNode {
     super(config);
     this.#target = target;
   }
+
   public evaluate(item: DataItem): boolean {
     if (!super.evaluate(item)) {
       return false;
     }
     return entry_matcher(item.entries!.get(this.entry_config.name)!, this.entry_config, this.#target);
   }
+
   explain(): string {
     return t("acTion.entry_includes", [this.entry_config.name, this.#target]);
   }
@@ -138,6 +155,7 @@ export class ExactEntrySearchNode extends BasicEntrySearchNode {
     super(config);
     this.#target = target;
   }
+
   public evaluate(item: DataItem): boolean {
     if (!super.evaluate(item)) {
       return false;
@@ -146,6 +164,7 @@ export class ExactEntrySearchNode extends BasicEntrySearchNode {
       exact: true,
     });
   }
+
   explain(): string {
     return t("acTion.entry_matches", [this.entry_config.name, this.#target]);
   }
@@ -159,6 +178,7 @@ export class SortingEntrySearchNode extends BasicEntrySearchNode {
     this.#comparator = comparator;
     this.#explain = explain;
   }
+
   public evaluate(item: DataItem): boolean {
     if (!super.evaluate(item)) {
       return false;
@@ -169,6 +189,7 @@ export class SortingEntrySearchNode extends BasicEntrySearchNode {
     }
     return this.#comparator(item_value);
   }
+
   explain(): string {
     return this.#explain;
   }
@@ -190,23 +211,26 @@ export function extract_enclosed_string(value: string): { enclosed: string; rema
     return null;
   }
   return {
-    enclosed: matched[1].replaceAll('\\"', '"').replaceAll("\\\\", "\\"),
-    remainder: value.substring(matched[0].length),
+    enclosed: matched[1].replaceAll(String.raw`\"`, '"').replaceAll("\\\\", "\\"),
+    remainder: value.slice(matched[0].length),
   };
 }
 export function to_enclosed_string(value: string): string {
-  if (
-    value.startsWith('"') ||
-    Operators.map((terminator) => value.indexOf(terminator) !== -1).some((i) => i)
-  ) {
-    return `"${value.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
+  if (value.startsWith('"') || Operators.map(terminator => value.includes(terminator)).some(Boolean)) {
+    return `"${value.replaceAll("\\", "\\\\").replaceAll('"', String.raw`\"`)}"`;
   }
   return value;
 }
 export function get_operator_index(command: string): number {
-  return Operators.map((terminator) => command.indexOf(terminator)).reduce((previous, current) =>
-    previous === -1 ? current : current === -1 ? previous : Math.min(previous, current)
-  );
+  return Operators.map(terminator => command.indexOf(terminator)).reduce((previous, current) => {
+    if (previous === -1) {
+      return current;
+    }
+    if (current === -1) {
+      return previous;
+    }
+    return Math.min(previous, current);
+  });
 }
 
 function handle_entry_search(command: string): iSearchNode | null {
@@ -226,8 +250,8 @@ function handle_entry_search(command: string): iSearchNode | null {
     return terminator_position === -1
       ? { entry_name: command, remainder: "" }
       : {
-          entry_name: command.substring(0, terminator_position),
-          remainder: command.substring(terminator_position),
+          entry_name: command.slice(0, terminator_position),
+          remainder: command.slice(terminator_position),
         };
   })();
   if (entry_name === null || remainder === null) {
@@ -235,7 +259,7 @@ function handle_entry_search(command: string): iSearchNode | null {
   }
   const database = useDatabaseStore();
   // is this a valid entry name? try to find its configuration
-  const entry_config = database.entries.find((config) => config.name === entry_name);
+  const entry_config = database.entries.find(config => config.name === entry_name);
   if (entry_config === undefined) {
     // no it is not
     return null;
@@ -247,22 +271,29 @@ function handle_entry_search(command: string): iSearchNode | null {
     // empty string as search content is not allowed
     return null;
   }
-  const effective_value = remainder.substring(1);
+  const effective_value = remainder.slice(1);
   if (["=", ":"].includes(remainder[0]!)) {
     return new (remainder[0] === "=" ? PartialEntrySearchNode : ExactEntrySearchNode)(
       entry_config,
-      effective_value
+      effective_value,
     );
   }
   if (entry_config.sorting_method === Sorting.Disabled) {
     return null;
   }
-  const sortable_target =
-    entry_config.sorting_method === Sorting.AsString
-      ? effective_value
-      : entry_config.sorting_method === Sorting.AsDate
-      ? sorting_date_to_string(effective_value)
-      : sorting_number_to_string(effective_value);
+  const sortable_target = (() => {
+    switch (entry_config.sorting_method) {
+      case Sorting.AsString: {
+        return effective_value;
+      }
+      case Sorting.AsDate: {
+        return sorting_date_to_string(effective_value);
+      }
+      case Sorting.AsNumber: {
+        return sorting_number_to_string(effective_value);
+      }
+    }
+  })();
   if (sortable_target === null) {
     return null;
   }
@@ -278,7 +309,7 @@ function handle_entry_search(command: string): iSearchNode | null {
   return new SortingEntrySearchNode(
     entry_config,
     (item: string): boolean => sorting_pair.comparator(item, sortable_target),
-    t(sorting_pair.explain_key, [entry_config.name, effective_value])
+    t(sorting_pair.explain_key, [entry_config.name, effective_value]),
   );
 }
 
@@ -287,18 +318,18 @@ export function compile_search_command(command: string): iSearchNode | null {
     return null;
   }
   if (command[0] === "!") {
-    const subcommand = compile_search_command(command.substring(1));
+    const subcommand = compile_search_command(command.slice(1));
     return subcommand === null ? null : new NotSearchNode(subcommand);
   }
   if (command[0] === "$") {
-    return handle_entry_search(command.substring(1));
+    return handle_entry_search(command.slice(1));
   }
   const database = useDatabaseStore();
   return new GeneralTextSearchNode(command, database.entries);
 }
 
 export function get_available_operators(
-  config: DatasourceEntryConfiguration
+  config: DatasourceEntryConfiguration,
 ): { operator: string; explanation: string }[] {
   const base = [
     {

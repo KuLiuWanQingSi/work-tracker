@@ -1,41 +1,41 @@
 <template>
   <v-row>
     <v-col
-      :style="column_style"
-      :sm="column_sizes.sm"
-      :md="column_sizes.md"
+      class="display-column"
       :lg="column_sizes.lg"
+      :md="column_sizes.md"
+      :sm="column_sizes.sm"
+      :style="column_style"
       :xl="column_sizes.xl"
       :xxl="column_sizes.xxl"
-      class="position-sticky top-0"
-      style="height: max-content"
     >
       <item-viewer
-        :data="effective_data"
         :configuration="database_store.database_!.configurations.entry.entries"
-        :data_id="props.data_id ?? ''"
-        :override_image="override_image"
-        :in_editor="true"
+        :data="effective_data"
+        :data-id="props.dataId ?? ''"
+        :in-editor="true"
+        :override-image="override_image"
       />
     </v-col>
     <v-col
-      :style="column_style"
-      :sm="column_sizes.sm"
-      :md="column_sizes.md"
+      class="display-column"
       :lg="column_sizes.lg"
+      :md="column_sizes.md"
+      :sm="column_sizes.sm"
+      :style="column_style"
       :xl="column_sizes.xl"
       :xxl="column_sizes.xxl"
     >
       <v-card :loading="submitting">
         <v-card-text v-if="database_store.has_image">
           <v-file-input
-            density="compact"
-            prepend-icon="mdi-image"
-            accept="image/*"
-            :label="$t('message.load_image_from_file')"
-            @update:model-value="load_image_from_file"
             v-model="image_files"
-          ></v-file-input>
+            accept="image/*"
+            density="compact"
+            :label="$t('message.load_image_from_file')"
+            prepend-icon="mdi-image"
+            @update:model-value="load_image_from_file"
+          />
         </v-card-text>
         <v-card-text v-if="local_data_ready">
           <template
@@ -44,7 +44,7 @@
           >
             <v-row>
               <v-col cols="12">
-                <v-divider v-if="database_store.has_image || index !== 0"></v-divider>
+                <v-divider v-if="database_store.has_image || index !== 0" />
               </v-col>
               <v-col cols="12">
                 <p>{{ entry.name }}</p>
@@ -52,23 +52,23 @@
               <v-col cols="12">
                 <item-string-editor
                   v-if="entry.type === 'string'"
-                  :data="(local_data.entries.get(entry.name) as StringEntryData)"
+                  :data="local_data.entries.get(entry.name) as StringEntryData"
                 />
                 <item-rating-editor
                   v-else-if="entry.type === 'rating'"
-                  :data="(local_data.entries.get(entry.name) as InternalRatingEntryData)"
                   :configuration="entry"
+                  :data="local_data.entries.get(entry.name) as InternalRatingEntryData"
                 />
                 <item-tag-editor
                   v-else-if="entry.type === 'tag'"
-                  :entry_name="entry.name"
-                  :data="(local_data.entries.get(entry.name) as InternalTagEntryData)"
                   :configuration="entry"
+                  :data="local_data.entries.get(entry.name) as InternalTagEntryData"
+                  :entry-name="entry.name"
                 />
               </v-col>
             </v-row>
           </template>
-          <v-banner v-if="data_invalid_reasons.length !== 0" color="error" icon="$error" class="my-6">
+          <v-banner v-if="data_invalid_reasons.length > 0" class="my-6" color="error" icon="$error">
             <v-banner-text>
               {{
                 `${$t("message.error.cannot_commit_modification")}\n${data_invalid_reasons
@@ -79,7 +79,7 @@
           </v-banner>
           <v-row justify="space-around">
             <v-col cols="5">
-              <v-btn block color="primary" :disabled="data_invalid_reasons.length !== 0" @click="submit">
+              <v-btn block color="primary" :disabled="data_invalid_reasons.length > 0" @click="submit">
                 {{ $t("action.confirm") }}
               </v-btn>
             </v-col>
@@ -93,11 +93,6 @@
   </v-row>
 </template>
 <script setup lang="ts">
-import { i18n } from "@/locales";
-import { load_image } from "@/procedures/image-utils";
-import { validate_internal_item } from "@/procedures/item-validator";
-import { dual_way_filter } from "@/procedures/utilities";
-import { useDatabaseStore } from "@/stores/database";
 import type { DataItem } from "@/types/datasource-data";
 import type {
   InternalDataItem,
@@ -108,17 +103,22 @@ import type {
   StringEntryData,
   TagEntryData,
 } from "@/types/datasource-entry";
-import { ImageImageFormat, ThumbnailImageFormat } from "@/types/image-types";
-import { inj_DisplayNotice } from "@/types/injections";
-import { explain_invalid_reason, type ItemInvalidReason } from "@/types/invalid-items";
-
 import { computed, inject, onMounted } from "vue";
 import { VFileInput } from "vuetify/components";
+import { i18n } from "@/locales";
+import { load_image } from "@/procedures/image-utils";
+import { validate_internal_item } from "@/procedures/item-validator";
+import { dual_way_filter } from "@/procedures/utilities";
+import { useDatabaseStore } from "@/stores/database";
+import { ImageImageFormat, ThumbnailImageFormat } from "@/types/image-types";
+
+import { inj_DisplayNotice } from "@/types/injections";
+import { explain_invalid_reason, type ItemInvalidReason } from "@/types/invalid-items";
 
 const { t } = i18n.global;
 const display_notice = inject(inj_DisplayNotice)!;
 const database_store = useDatabaseStore();
-const props = defineProps<{ data?: DataItem; data_id?: string }>();
+const props = defineProps<{ data?: DataItem; dataId?: string }>();
 const emit = defineEmits<{
   done: [];
 }>();
@@ -131,7 +131,7 @@ const column_sizes = computed(() => ({
   xxl: database_store.has_image ? "" : "4",
 }));
 const column_style = computed(() =>
-  database_store.has_image ? `width: ${database_store.image_size.width}px` : ""
+  database_store.has_image ? `width: ${database_store.image_size.width}px` : "",
 );
 
 // we maintain a local copy of the data if we are editing: we do not want modifications goes straight down to
@@ -144,7 +144,7 @@ const effective_data = computed((): InternalDataItem => {
     return { entries: new Map() };
   }
   const helper = database_store
-    .database_!.configurations.entry.entries.map((entry_config) => {
+    .database_!.configurations.entry.entries.map(entry_config => {
       const entry_value = local_data.value.entries.get(entry_config.name)!;
       if (entry_config.type === "string" && (entry_value as StringEntryData).value === "") {
         return undefined;
@@ -155,7 +155,7 @@ const effective_data = computed((): InternalDataItem => {
       }
       return [entry_config.name, entry_value] as [string, InternalEntryData];
     })
-    .filter((value) => value !== null && value !== undefined);
+    .filter(value => value !== null && value !== undefined);
   const result = {
     image: local_data.value.image,
     entries: new Map<string, InternalEntryData>(helper),
@@ -181,65 +181,83 @@ onMounted(() => {
   image_helpers.thumbnail_url = null;
   image_helpers.thumbnail_bitmap = null;
   // build local data
-  if (props.data !== undefined && props.data_id !== undefined) {
+  if (props.data !== undefined && props.dataId !== undefined) {
     // fetch provided data
     //  we need to do deep copy so that modifications not yet submitted will not leak to database
     local_data.value.image = props.data.image === undefined ? undefined : { ...props.data.image };
-    props.data.entries?.forEach((value, key) => {
-      const config = database_store.database_!.configurations.entry.entries.find(
-        (value) => value.name === key
-      )!;
-      if (config.type === "rating") {
-        const data = value as RatingEntryData;
-        local_data.value.entries.set(key, {
-          score: data.score,
-          comment: data.comment ?? "",
-          use_comment: data.comment ? true : false,
-        });
-      } else if (config.type === "string") {
-        const data = value as StringEntryData;
-        local_data.value.entries.set(key, {
-          value: data.value,
-        });
-      } else if (config.type === "tag") {
-        const data = value as TagEntryData;
-        local_data.value.entries.set(key, {
-          tags: [...data.tags],
-        });
+    if (props.data.entries) {
+      for (const [key, value] of props.data.entries.entries()) {
+        const config = database_store.database_!.configurations.entry.entries.find(
+          value => value.name === key,
+        )!;
+        switch (config.type) {
+          case "rating": {
+            const data = value as RatingEntryData;
+            local_data.value.entries.set(key, {
+              score: data.score,
+              comment: data.comment ?? "",
+              use_comment: data.comment ? true : false,
+            });
+            break;
+          }
+          case "string": {
+            const data = value as StringEntryData;
+            local_data.value.entries.set(key, {
+              value: data.value,
+            });
+            break;
+          }
+          case "tag": {
+            const data = value as TagEntryData;
+            local_data.value.entries.set(key, {
+              tags: [...data.tags],
+            });
+            break;
+          }
+          // No default
+        }
       }
-    });
+    }
     // prepare image
     if (database_store.has_image) {
-      database_store.get_image(props.data_id).then((image) => {
+      database_store.get_image(props.dataId).then(image => {
         override_image.value = image ?? "";
       });
     }
   }
   // emplace default (empty) values to undefined entries
   //  this will help editor by providing valid storages for each possible entries
-  database_store.database_!.configurations.entry.entries.forEach((entry) => {
+  for (const entry of database_store.database_!.configurations.entry.entries) {
     if (local_data.value.entries!.has(entry.name)) {
-      return;
+      continue;
     }
-    if (entry.type === "string") {
-      local_data.value.entries!.set(entry.name, { value: "" } as StringEntryData);
-    } else if (entry.type === "tag") {
-      local_data.value.entries!.set(entry.name, { tags: [] } as TagEntryData);
-    } else if (entry.type === "rating") {
-      local_data.value.entries!.set(entry.name, {
-        score: 0,
-        comment: "",
-        use_comment: false,
-      } as InternalRatingEntryData);
+    switch (entry.type) {
+      case "string": {
+        local_data.value.entries!.set(entry.name, { value: "" } as StringEntryData);
+        break;
+      }
+      case "tag": {
+        local_data.value.entries!.set(entry.name, { tags: [] } as TagEntryData);
+        break;
+      }
+      case "rating": {
+        local_data.value.entries!.set(entry.name, {
+          score: 0,
+          comment: "",
+          use_comment: false,
+        } as InternalRatingEntryData);
+        break;
+      }
+      // No default
     }
-  });
+  }
   local_data_ready.value = true;
 });
 
 const image_files: Ref<File | undefined> = ref(undefined);
 
 function load_image_internal(image: Blob | HTMLImageElement) {
-  load_image(image, database_store.image_size, ImageImageFormat, ThumbnailImageFormat).then((result) => {
+  load_image(image, database_store.image_size, ImageImageFormat, ThumbnailImageFormat).then(result => {
     image_files.value = undefined;
     if (result === null) {
       return;
@@ -263,7 +281,7 @@ function load_image_internal(image: Blob | HTMLImageElement) {
 
 function load_image_from_file(files: File | File[] | undefined) {
   image_files.value = undefined;
-  if (files === undefined || files instanceof Array) {
+  if (files === undefined || Array.isArray(files)) {
     return;
   }
   load_image_internal(files);
@@ -276,59 +294,69 @@ const data_invalid_reasons = computed((): ItemInvalidReason[] => {
   return validate_internal_item(
     effective_data.value,
     override_image.value,
-    database_store.database_!.configurations.entry
+    database_store.database_!.configurations.entry,
   );
 });
 
 async function submit_internal() {
   const result: DataItem = {};
   // prepare the images
-  const images =
-    image_helpers.image_bitmap === null
-      ? undefined
-      : {
-          image: image_helpers.image_bitmap!,
-          image_url: image_helpers.image_url!,
-          thumbnail: image_helpers.thumbnail_bitmap!,
-          thumbnail_url: image_helpers.thumbnail_url!,
-        };
+  const images = (() => {
+    if (image_helpers.image_bitmap === null) {
+      return undefined;
+    }
+    return {
+      image: image_helpers.image_bitmap!,
+      image_url: image_helpers.image_url!,
+      thumbnail: image_helpers.thumbnail_bitmap!,
+      thumbnail_url: image_helpers.thumbnail_url!,
+    };
+  })();
   result.image = local_data.value.image;
   // handle each entry
-  if (database_store.entries.length !== 0) {
+  if (database_store.entries.length > 0) {
     result.entries = new Map();
   }
   const tag_patch = database_store.prepare_tag_registration();
-  database_store.entries.forEach((entry_config) => {
+  for (const entry_config of database_store.entries) {
     const data_ = effective_data.value.entries.get(entry_config.name);
     if (data_ === undefined) {
-      return;
+      continue;
     }
-    if (entry_config.type === "string") {
-      result.entries!.set(entry_config.name, data_ as StringEntryData);
-    } else if (entry_config.type === "rating") {
-      const data = data_ as InternalRatingEntryData;
-      const regularized_data: RatingEntryData = {
-        score: data.score,
-        comment: data.use_comment && data.comment ? data.comment : undefined,
-      };
-      result.entries!.set(entry_config.name, regularized_data);
-    } else if (entry_config.type === "tag") {
-      const data = data_ as InternalTagEntryData;
-      // register new tags to the database
-      const [established_tags, new_tags] = dual_way_filter(
-        data.tags,
-        (value) => typeof value === "number"
-      ) as [number[], string[]];
-      const new_tag_ids = tag_patch.register_tags(entry_config.name, new_tags);
-      const regularized_data: TagEntryData = {
-        tags: established_tags.concat(new_tag_ids).sort(),
-      };
-      result.entries!.set(entry_config.name, regularized_data);
+    switch (entry_config.type) {
+      case "string": {
+        result.entries!.set(entry_config.name, data_ as StringEntryData);
+        break;
+      }
+      case "rating": {
+        const data = data_ as InternalRatingEntryData;
+        const regularized_data: RatingEntryData = {
+          score: data.score,
+          comment: data.use_comment && data.comment ? data.comment : undefined,
+        };
+        result.entries!.set(entry_config.name, regularized_data);
+        break;
+      }
+      case "tag": {
+        const data = data_ as InternalTagEntryData;
+        // register new tags to the database
+        const [established_tags, new_tags] = dual_way_filter(
+          data.tags,
+          value => typeof value === "number",
+        ) as [number[], string[]];
+        const new_tag_ids = tag_patch.register_tags(entry_config.name, new_tags);
+        const regularized_data: TagEntryData = {
+          tags: established_tags.concat(new_tag_ids).toSorted(),
+        };
+        result.entries!.set(entry_config.name, regularized_data);
+        break;
+      }
+      // No default
     }
-  });
+  }
   // place the item to the database
   const errors = await database_store.place_item([
-    { runtime_id: props.data_id, source: result, images: images },
+    { runtime_id: props.dataId, source: result, images: images },
   ]);
   if (errors.length === 0) {
     emit("done");
@@ -337,7 +365,7 @@ async function submit_internal() {
   display_notice(
     "error",
     t("message.error.cannot_commit_modification"),
-    errors.map(({ reason }) => explain_invalid_reason(reason)).join("; ")
+    errors.map(({ reason }) => explain_invalid_reason(reason)).join("; "),
   );
 }
 
@@ -350,3 +378,11 @@ function submit() {
   });
 }
 </script>
+<style lang="css" scoped>
+.display-column {
+  /* 104px = overlay padding (64px * 2) + row margin (-12px * 2) */
+  height: calc(100vh - 104px);
+  overflow-y: scroll;
+  scrollbar-width: none;
+}
+</style>

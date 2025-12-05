@@ -3,31 +3,31 @@
   <v-form :disabled="props.disabled">
     <v-text-field
       v-model="password"
-      variant="outlined"
-      :type="show_password ? 'text' : 'password'"
       :append-icon="show_password ? 'mdi-eye-off' : 'mdi-eye'"
       :label="$t('datasource_creation.password')"
+      :type="show_password ? 'text' : 'password'"
+      variant="outlined"
       @click:append="show_password = !show_password"
-    ></v-text-field>
+    />
     <v-text-field
       v-model="salt_hex"
-      variant="outlined"
-      readonly
       disabled
       :label="$t('datasource_creation.salt')"
-    ></v-text-field>
+      readonly
+      variant="outlined"
+    />
     <v-text-field
       v-model="key_digest_hex"
-      variant="outlined"
-      readonly
       disabled
       :label="$t('datasource_creation.key')"
-    ></v-text-field>
+      readonly
+      variant="outlined"
+    />
     <v-btn
-      prepend-icon="mdi-dice-multiple"
       block
       :disabled="password === ''"
       :loading="is_loading"
+      prepend-icon="mdi-dice-multiple"
       @click="generate_and_report_configuration"
     >
       {{ $t("datasource_creation.generate_a_key") }}
@@ -35,16 +35,16 @@
   </v-form>
 </template>
 <script setup lang="ts">
+import type { Ref } from "vue";
+import type { Argon2Configuration, DataEncryptionKey } from "@/types/datasource-crypto";
+import { ref } from "vue";
+
 import { get_key_from_password } from "@/procedures/crypto";
 import { to_readable_hexadecimal } from "@/procedures/transcoding";
-import type { Argon2Configuration, DataEncryptionKey } from "@/types/datasource-crypto";
-
-import type { Ref } from "vue";
-import { ref } from "vue";
 
 const props = defineProps<{
   disabled: boolean;
-  argon2_parameter_getter: () => { memory: number; iterations: number; threads: number } | null;
+  argon2ParameterGetter: () => { memory: number; iterations: number; threads: number } | null;
 }>();
 const emit = defineEmits<{
   finished: [{ salt: Uint8Array; encryption: DataEncryptionKey }];
@@ -59,7 +59,7 @@ const is_loading: Ref<boolean> = ref(false);
 function generate_and_report_configuration() {
   is_loading.value = true;
 
-  const argon2_parameters = props.argon2_parameter_getter();
+  const argon2_parameters = props.argon2ParameterGetter();
   if (argon2_parameters === null) {
     is_loading.value = false;
     return;
@@ -86,7 +86,7 @@ function generate_and_report_configuration() {
     key_digest_hex.value = to_readable_hexadecimal(new DataView(digest));
   })();
   const key_encryption_promise = (async () => {
-    const {key: password_key} = await get_key_from_password(password.value, argon2_configuration);
+    const { key: password_key } = await get_key_from_password(password.value, argon2_configuration);
     const nonce = new Uint8Array(12);
     crypto.getRandomValues(nonce);
     const encrypted_key = await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, password_key, key);

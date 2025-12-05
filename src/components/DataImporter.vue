@@ -5,29 +5,29 @@
         v-if="working"
         v-model="progress"
         :buffer-value="listing_progress"
-        stream
         color="secondary"
-      ></v-progress-linear>
+        stream
+      />
       <v-file-input
         v-model="selected_files"
+        hide-input
         multiple
         prepend-icon="mdi-file-multiple"
         @update:model-value="do_import"
-        hide-input
-      ></v-file-input>
+      />
     </v-container>
   </v-sheet>
 </template>
 <script setup lang="ts">
+import type { DataItem } from "@/types/datasource-data";
+import { inject } from "vue";
+import { VFileInput } from "vuetify/components";
 import { i18n } from "@/locales";
 import { load_dumped_item, type LoadedImage } from "@/procedures/item-migrant";
 import { useDatabaseStore } from "@/stores/database";
-import type { DataItem } from "@/types/datasource-data";
+
 import { inj_DisplayNotice } from "@/types/injections";
 import { explain_invalid_reason } from "@/types/invalid-items";
-
-import { inject } from "vue";
-import { VFileInput } from "vuetify/components";
 
 const { t } = i18n.global;
 const database_store = useDatabaseStore();
@@ -40,7 +40,7 @@ const emit = defineEmits<{
 const display_notice = inject(inj_DisplayNotice)!;
 function stem(filename: string) {
   const last_dot = filename.lastIndexOf(".");
-  return last_dot <= 0 ? filename : filename.substring(0, last_dot);
+  return last_dot <= 0 ? filename : filename.slice(0, last_dot);
 }
 async function do_import_internal(data_files: File[], image_files: Map<string, File>) {
   let finished_items = 0;
@@ -49,13 +49,13 @@ async function do_import_internal(data_files: File[], image_files: Map<string, F
     progress.value = (finished_items / data_files.length) * 100;
   };
   const data_items = await Promise.all(
-    data_files.map(async (file) => {
+    data_files.map(async file => {
       const text = await file.text();
       try {
         const result = await load_dumped_item(
           database_store.database_!.configurations.entry,
           text,
-          image_files.get(stem(file.name))
+          image_files.get(stem(file.name)),
         );
         update_progress();
         return result;
@@ -64,9 +64,9 @@ async function do_import_internal(data_files: File[], image_files: Map<string, F
         update_progress();
         return null;
       }
-    })
+    }),
   );
-  if (data_items.some((item) => item === null)) {
+  if (data_items.includes(null)) {
     emit("done");
     return;
   }
@@ -76,17 +76,17 @@ async function do_import_internal(data_files: File[], image_files: Map<string, F
         data: DataItem;
         images?: LoadedImage;
       }[]
-    ).map(({ data, images }) => ({ source: data, images: images }))
+    ).map(({ data, images }) => ({ source: data, images: images })),
   );
   emit("done");
-  if (errors.length !== 0) {
+  if (errors.length > 0) {
     display_notice(
       "error",
       t("message.error.failed_to_import_reasons"),
       errors
         .map(({ index, reason }) => `${data_files[index]!.name}: ${explain_invalid_reason(reason)}`)
         .slice(0, 24)
-        .join("\n")
+        .join("\n"),
     );
   }
 }
@@ -94,14 +94,14 @@ async function do_import_starter(files: File[]) {
   const file_count = files.length;
   const data_files: File[] = [];
   const image_files: Map<string, File> = new Map();
-  files.forEach((file, index) => {
+  for (const [index, file] of files.entries()) {
     if (file.name.endsWith(".json")) {
       data_files.push(file);
     } else {
       image_files.set(stem(file.name), file);
     }
     listing_progress.value = ((index + 1) / file_count) * 100;
-  });
+  }
   await do_import_internal(data_files, image_files);
 }
 

@@ -2,16 +2,16 @@
 
 <template>
   <v-select
-    :items="LanguagesAvailable"
-    :loading="show_loading"
     v-model="selected_language"
     item-title="name"
     item-value="key"
-  ></v-select>
+    :items="LanguagesAvailable"
+    :loading="show_loading"
+  />
 
   <v-snackbar v-model="show_error" multi-line :timeout="error_message_timeout">
     {{ $t("message.cannot_change_language") }} {{ error_content }}
-    <template v-slot:actions>
+    <template #actions>
       <v-btn color="info" @click="copy_error_message">
         <v-icon v-if="copy_succeed" icon="mdi-check-bold" />
         <v-icon v-if="copy_failed" icon="mdi-alert" />
@@ -23,12 +23,12 @@
 </template>
 
 <script setup lang="ts">
-import { SUPPORT_LOCALES, i18n, setI18nLanguage } from "@/locales";
-
 import type { Ref } from "vue";
-import { ref, watch } from "vue";
 
-const LanguagesAvailable: { key: string; name: string }[] = [...SUPPORT_LOCALES.keys()].map((key_name) => ({
+import { ref, watch } from "vue";
+import { i18n, setI18nLanguage, SUPPORT_LOCALES } from "@/locales";
+
+const LanguagesAvailable: { key: string; name: string }[] = [...SUPPORT_LOCALES.keys()].map(key_name => ({
   key: key_name,
   name: SUPPORT_LOCALES.get(key_name) ?? "",
 }));
@@ -69,7 +69,7 @@ async function copy_error_message() {
   try {
     await navigator.clipboard.writeText(error_content.value);
     copy_succeed.value = true;
-  } catch (error) {
+  } catch {
     error_message_timeout.value = -1;
     copy_failed.value = true;
   }

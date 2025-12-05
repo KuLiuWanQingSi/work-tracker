@@ -1,10 +1,9 @@
-// Utilities
-import { defineConfig } from "vite";
-import { fileURLToPath, URL } from "node:url";
 import { readFileSync } from "node:fs";
+import { fileURLToPath, URL } from "node:url";
+import { defineConfig } from "vite";
 
 // https://vitejs.dev/config/
-export default defineConfig(({ command }) => ({
+export default defineConfig(() => ({
   plugins: [
     {
       name: "userscript-bundler",
@@ -13,17 +12,17 @@ export default defineConfig(({ command }) => ({
       async generateBundle(_, bundle) {
         // find the entry
         const entries = Object.entries(bundle).filter(
-          ([_, content]) => content.type === "chunk" && content.isEntry
+          ([_, content]) => content.type === "chunk" && content.isEntry,
         );
         if (entries.length === 0) {
           this.warn("[userscript-bundler] cannot find entry for the userscript");
           return;
         }
         if (entries.length > 1) {
-          this.warn(
-            "[userscript-bundler] multiple entries existing, please check. They are:\n" +
-              entries.map(([_, content]) => content.fileName).join("\n")
+          const message = ["[userscript-bundler] multiple entries existing, please check. They are:"].concat(
+            entries.map(([_, content]) => content.fileName),
           );
+          this.warn(message.join("\n"));
           return;
         }
         // collect chunks by imported order
@@ -41,7 +40,9 @@ export default defineConfig(({ command }) => ({
           }
           if (item.type === "chunk") {
             const imports = item.imports.concat(item.dynamicImports);
-            imports.forEach(collectChunk);
+            for (const chunk of imports) {
+              collectChunk(chunk);
+            }
             collected_chunks.push({ name: file_name, code: item.code });
           } else {
             collected_chunks.push({ name: file_name, code: `/* asset ${file_name} */\n${item.source}` });
@@ -65,7 +66,9 @@ export default defineConfig(({ command }) => ({
           ...collected_chunks.map(({ name, code }) => `// ---- chunk: ${name} ----\n${code}`),
         ].join("\n");
         for (const { name } of collected_chunks) {
-          if (bundle[name]) delete bundle[name];
+          if (bundle[name]) {
+            delete bundle[name];
+          }
         }
         this.emitFile({
           type: "asset",

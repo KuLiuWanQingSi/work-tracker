@@ -3,17 +3,17 @@
     <v-card-text>
       <v-switch
         v-model="unique"
-        :label="$t('datasource_creation.string_unique')"
-        :hint="$t('datasource_creation.string_unique_hint')"
-        persistent-hint
         color="primary"
-      ></v-switch>
+        :hint="$t('datasource_creation.string_unique_hint')"
+        :label="$t('datasource_creation.string_unique')"
+        persistent-hint
+      />
     </v-card-text>
   </v-card>
 </template>
 <script setup lang="ts">
-import { Sorting } from "@/definitions/sorting_types";
 import type { DatasourceEntryDetailsAPI } from "@/types/datasource-entry-details";
+import { Sorting } from "@/definitions/sorting_types";
 
 const unique: Ref<boolean> = ref(false);
 

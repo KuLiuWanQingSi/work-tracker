@@ -4,8 +4,9 @@
   <v-container class="fill-height">
     <v-row justify="center">
       <v-stepper
-        width="100%"
+        v-model="current_step"
         alt-labels
+        hide-actions
         :items="[
           $t('datasource_creation.welcome'),
           $t('datasource_creation.security_setup'),
@@ -14,33 +15,32 @@
           $t('datasource_creation.summary_and_done'),
         ]"
         :mobile="mobile"
-        hide-actions
-        v-model="current_step"
+        width="100%"
       >
-        <template v-slot:item.1>
+        <template #item.1>
           <datasource-creation-welcome @next="current_step += 1" />
         </template>
-        <template v-slot:item.2>
+        <template #item.2>
           <datasource-creation-security-setup
-            @prev="current_step -= 1"
             @next="collect_crypto_configurations_and_continue"
+            @prev="current_step -= 1"
           />
         </template>
-        <template v-slot:item.3>
+        <template #item.3>
           <datasource-creation-general-configuration
-            @prev="current_step -= 1"
             @next="collect_global_configurations_and_continue"
-          />
-        </template>
-        <template v-slot:item.4>
-          <datasource-creation-entry-setting
             @prev="current_step -= 1"
-            @next="collect_entry_configurations_and_continue"
           />
         </template>
-        <template v-slot:item.5>
+        <template #item.4>
+          <datasource-creation-entry-setting
+            @next="collect_entry_configurations_and_continue"
+            @prev="current_step -= 1"
+          />
+        </template>
+        <template #item.5>
           <v-sheet class="pa-4 text-center mx-auto">
-            <v-icon class="mb-5" color="success" icon="mdi-check-circle" size="112"></v-icon>
+            <v-icon class="mb-5" color="success" icon="mdi-check-circle" size="112" />
             <h2 class="text-h5 mb-6">{{ $t("datasource_creation.summary_and_done") }}</h2>
             <p class="mb-4 text-medium-emphasis text-body-2">
               {{ $t("datasource_creation.summary_and_done_detail") }}
@@ -48,7 +48,7 @@
           </v-sheet>
           <v-container class="mt-8">
             <v-row class="mb-2">
-              <v-spacer></v-spacer>
+              <v-spacer />
               <v-btn
                 color="primary"
                 :loading="generating"
@@ -57,14 +57,14 @@
               >
                 {{ $t("action.download_full_database") }}
               </v-btn>
-              <v-spacer></v-spacer>
+              <v-spacer />
             </v-row>
             <v-row v-if="download_clicked" class="mt-2">
-              <v-spacer></v-spacer>
+              <v-spacer />
               <v-btn color="success" prepend-icon="mdi-check" to="/">
                 {{ $t("action.done") }}
               </v-btn>
-              <v-spacer></v-spacer>
+              <v-spacer />
             </v-row>
           </v-container>
         </template>
@@ -74,17 +74,17 @@
 </template>
 
 <script setup lang="ts">
-import { encrypt_datasource, wt_import_key } from "@/procedures/crypto";
-import { save_to_local } from "@/procedures/save-to-local";
+import type { Ref } from "vue";
 import type { Datasource } from "@/types/datasource";
 import type { CryptoConfiguration } from "@/types/datasource-crypto";
 import type { EntriesConfiguration } from "@/types/datasource-entry";
 import type { GlobalConfiguration } from "@/types/datasource-global";
-
 import { BlobWriter, TextReader, ZipWriter } from "@zip.js/zip.js";
-import type { Ref } from "vue";
+
 import { ref } from "vue";
 import { useDisplay } from "vuetify";
+import { encrypt_datasource, wt_import_key } from "@/procedures/crypto";
+import { save_to_local } from "@/procedures/save-to-local";
 
 const { mobile } = useDisplay();
 

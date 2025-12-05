@@ -1,8 +1,8 @@
 // forward types
-export type { Argon2HashWorkerParameters, Argon2HashWorkerResult } from "./argon2-hash-worker";
-
 import type { Argon2HashWorkerParameters, Argon2HashWorkerResult } from "./argon2-hash-worker";
 import Argon2Worker from "./argon2-hash-worker?worker&inline";
+
+export type { Argon2HashWorkerParameters, Argon2HashWorkerResult } from "./argon2-hash-worker";
 
 export function argon2_hash(parameters: Argon2HashWorkerParameters): {
   promise: Promise<Argon2HashWorkerResult>;
@@ -12,7 +12,7 @@ export function argon2_hash(parameters: Argon2HashWorkerParameters): {
   let resolver: ((value: Argon2HashWorkerResult | PromiseLike<Argon2HashWorkerResult>) => void) | null = null;
   const working_promise = new Promise<Argon2HashWorkerResult>((resolve, _) => {
     resolver = resolve;
-    worker.addEventListener("message", (event) => {
+    worker.addEventListener("message", event => {
       const result: Argon2HashWorkerResult = event.data;
       // the worker has to be killed anyway as it seems that it is leaking memory
       worker.terminate();

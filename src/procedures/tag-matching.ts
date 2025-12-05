@@ -34,25 +34,25 @@ export type TagMatchResult = TagMatchedResult | TagCreatingResult;
 export function find_tag_candidates(
   criterion: string,
   haystack: Readonly<string[]>,
-  options: { allow_creating: true }
+  options: { allow_creating: true },
 ): TagMatchResult[];
 export function find_tag_candidates(
   criterion: string,
   haystack: Readonly<string[]>,
-  options?: { allow_creating?: false }
+  options?: { allow_creating?: false },
 ): TagMatchedResult[];
 export function find_tag_candidates(
   criterion: string,
   haystack: Readonly<string[]>,
-  options?: { allow_creating?: boolean }
+  options?: { allow_creating?: boolean },
 ): TagMatchResult[];
 export function find_tag_candidates(
   criterion: string,
   haystack: Readonly<string[]>,
-  options?: { allow_creating?: boolean }
+  options?: { allow_creating?: boolean },
 ): TagMatchResult[] {
   // bind indices with values since the indices is used to refer tags existing
-  const bind_tags = haystack.map((value, index) => ({ value: value, index: index }));
+  const bind_tags = haystack.map((value, index) => ({ value, index }));
   // separate exact matches and other tags
   const [exact, non_exact] = dual_way_filter(bind_tags, ({ value }) => value === criterion);
   // separate prefix matches and other tags
@@ -65,21 +65,21 @@ export function find_tag_candidates(
         type: TagMatchClass.ExactMatch,
         value: index,
         display: value,
-      })
+      }),
     ),
     ...prefix.map(
       ({ value, index }): TagMatchedResult => ({
         type: TagMatchClass.PrefixMatches,
         value: index,
         display: value,
-      })
+      }),
     ),
     ...substring.map(
       ({ value, index }): TagMatchedResult => ({
         type: TagMatchClass.SubstringMatches,
         value: index,
         display: value,
-      })
+      }),
     ),
   ];
   if (options?.allow_creating && exact.length === 0) {

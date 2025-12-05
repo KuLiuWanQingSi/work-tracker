@@ -94,7 +94,11 @@ The data supplied to your script is an array of objects, one for each item in yo
 - If the type is *rating*, the value will be an object `{ score: number, comment?: string }`
 Missing optional entries will not appear on the object supplied.
 
-## Building
+## Building and Developing
+
+This section is intended for people who want to build an instance of this application from scratch and / or to involve in the development of it.
+
+### Building an Instance
 
 This application follows common workflow for frontend application development. We use [bun](https://bun.sh/#getting-started) as package manager, but you are free to try something else if you would like. Use `bun install` to install the dependencies, and your environment should be ready for development.  
 There are three configuration files for building this project, one for the main application, another one for the injector and finally one for the injector configuration page. Following scripts are available:
@@ -102,6 +106,13 @@ There are three configuration files for building this project, one for the main 
 - `build:userscript`: build the injector
 - `build:userscript-configure-page`: build the configuration page
 - `build`: build everything
+
+### Developing the WT Injector
+
+Here is a checklist to follow before committing any modification to the WT Injector, or practically speaking any modifications to files under `src/extension`.  
+1. The UserScript version should be updated in most cases when any code file other than index.html, main.ts and ConfigurePage.vue is modified. The version is set in entry.ts.
+2. Whenever a breaking change is made to the interface provided by class InjectorConfiguration, increase interface_version by 1 in versions.json. This ensures that the configuration page syncs with the backend user script it depends on.
+3. Whenever a change is made to the format of saved (dumped) configuration, increase format_version by 1 in versions.json.
 
 
 ## License

@@ -17,7 +17,7 @@ function _get_user_locale(): string {
 // build i18n instance
 async function setupI18n(): Promise<I18n<any, {}, {}, string, false>> {
   const locale = _get_user_locale();
-  const i18n = createI18n({ locale: locale, legacy: false });
+  const i18n = createI18n({ locale, legacy: false });
   // the locale specified to createI18n will be marked as available anyway though it is not actually loaded
   //  we need to skip the checking so that we can load it
   await loadLocaleMessages(i18n, locale);

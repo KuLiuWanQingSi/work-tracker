@@ -18,3 +18,25 @@
   Tag subclass: some tags, can A and B, can be indeed different, but A can always implicates B. Allow items
    only tagged with A to be matched by searching B and forbid B from being added to items already tagged
    with A
+
+[Maintenance] Use Result<T> as return types for functions that may fail
+  Currently, functions that may fail (to be specific, that are expected to fail in certain situations) are
+   generally implemented in two ways: they would either throw an error or return something like undefined or
+   null to indicate the failure. This is not ideal since the errors can be mistakenly uncaught, and a bare
+   undefined or null gives no information about what actually happened.
+  To solve these problems, we introduced Result<T>, which should be used as return type of these functions.
+   An instance of Result<T> may be in one of two states, either succeed or failed. In succeed state, it can
+   be unwrapped into a value of type T, or a value of type Failure if in failed state, which contains a brief
+   description to the failure, the stack trace captured and optionally a detailed explanation. This is greatly
+   inspired by Result in Rust and std::expected in C++, which, as a wrapper around the value requested by the
+   callee, must be checked explicitly before actually retrieving the underlying value, making it less likely
+   to ignore an error (leaving it uncaught), and the static, unified structure describing the error triggered
+   makes what happened clear and ready to be presented to the user or whoever cares.
+  The user script submodule has been equipped with Result<T>, but the main application is not yet rewritten.
+   To eventually upgrade code in the main application:
+   - All new functions should not include throw statements or returning null / undefined to report an error,
+      use Result<T> instead, unless there is some reason very persuasive, which should be written explicitly.
+   - Upgrade any existing functions calling into, directly or indirectly, new functions returning Result<T>
+      since a Result received must be checked and have its error reported immediately or bubbled up to its
+      callee.
+   - throw should be disallowed once the rewriting is done via ESLint.

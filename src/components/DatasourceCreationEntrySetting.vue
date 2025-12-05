@@ -1,62 +1,62 @@
 <template>
-  <v-btn prepend-icon="mdi-arrow-left" class="mb-8" @click="emit('prev')">
+  <v-btn class="mb-8" prepend-icon="mdi-arrow-left" @click="emit('prev')">
     {{ $t("action.back_to_last_step") }}
   </v-btn>
   <v-card
-    :title="$t('datasource_creation.entry_setting')"
     :subtitle="$t('datasource_creation.entry_setting_detail')"
+    :title="$t('datasource_creation.entry_setting')"
   >
     <v-card-text>
       <v-sheet>
         <v-container>
           <v-switch
             v-model="include_image"
-            :label="$t('datasource_creation.include_image')"
             color="primary"
-          ></v-switch>
+            :label="$t('datasource_creation.include_image')"
+          />
           <v-row v-if="include_image" align="center">
             <v-col>
               <v-text-field
+                v-model="image_width"
                 hide-details
                 :prefix="$t('datasource_creation.width')"
                 :suffix="$t('datasource_creation.pixel')"
-                v-model="image_width"
-              ></v-text-field>
+              />
             </v-col>
             <v-col style="flex-grow: 0">
-              <v-icon icon="mdi-circle-small"></v-icon>
+              <v-icon icon="mdi-circle-small" />
             </v-col>
             <v-col>
               <v-text-field
+                v-model="image_height"
                 hide-details
                 :prefix="$t('datasource_creation.height')"
                 :suffix="$t('datasource_creation.pixel')"
-                v-model="image_height"
-              ></v-text-field>
+              />
             </v-col>
           </v-row>
         </v-container>
-        <v-divider class="my-6"></v-divider>
+        <v-divider class="my-6" />
       </v-sheet>
       <datasource-creation-entry-base
         v-for="(id, index) in entry_details"
         :key="id"
         ref="entries"
+        :control-value="id"
         :index="index"
         :total="entry_details.length"
-        :control-value="id"
-        @move-up="move_entry_up(index)"
         @move-down="move_entry_down(index)"
+        @move-up="move_entry_up(index)"
         @remove="remove_entry(index)"
-      ></datasource-creation-entry-base>
-      <v-btn block @click="add_new_entry" prepend-icon="mdi-plus-thick">{{
+      />
+      <v-btn block prepend-icon="mdi-plus-thick" @click="add_new_entry">{{
         $t("datasource_creation.add_new_entry")
       }}</v-btn>
     </v-card-text>
   </v-card>
   <v-container class="mt-8">
     <v-row>
-      <v-spacer></v-spacer>
+      <v-spacer />
       <v-btn
         append-icon="mdi-arrow-right"
         color="primary"
@@ -69,13 +69,13 @@
   </v-container>
 </template>
 <script setup lang="ts">
-import { i18n } from "@/locales";
+import type { Ref, ShallowReactive } from "vue";
 import type { DatasourceEntryAPI, EntriesConfiguration } from "@/types/datasource-entry";
 import type { DatasourceEntryConfiguration } from "@/types/datasource-entry-details";
-import { inj_DisplayNotice } from "@/types/injections";
-
-import type { Ref, ShallowReactive } from "vue";
 import { computed, inject, ref, shallowReactive, useTemplateRef } from "vue";
+
+import { i18n } from "@/locales";
+import { inj_DisplayNotice } from "@/types/injections";
 
 const { t } = i18n.global;
 const emit = defineEmits<{
@@ -124,24 +124,24 @@ function send_configurations() {
   }
 
   // collect entries
-  const entry_configurations = entries.value.map((node) => node.get_configuration());
+  const entry_configurations = entries.value.map(node => node.get_configuration());
   // use a set to make sure names of entries must be unique
   const names: Set<string> = new Set();
   const failed_entries: number[] = [];
   // mark entry that returned error: that is those returned null as configuration
-  entry_configurations.forEach((value, index) => {
+  for (const [index, value] of entry_configurations.entries()) {
     if (value !== null) {
       names.add(value.name);
-      return;
+      continue;
     }
     failed_entries.push(index);
-  });
+  }
   // stop in case any error is encountered or the name is not unique
   if (failed_entries.length > 0) {
     display_notice(
       "error",
       t("message.error.failed_to_config_entries"),
-      failed_entries.map((index) => index.toString()).join(", ")
+      failed_entries.map(index => index.toString()).join(", "),
     );
     return;
   }

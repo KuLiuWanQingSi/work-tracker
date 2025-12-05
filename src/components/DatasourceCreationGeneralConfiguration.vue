@@ -1,15 +1,15 @@
 <template>
-  <v-btn prepend-icon="mdi-arrow-left" class="mb-8" @click="emit('prev')">
+  <v-btn class="mb-8" prepend-icon="mdi-arrow-left" @click="emit('prev')">
     {{ $t("action.back_to_last_step") }}
   </v-btn>
   <v-card :title="$t('datasource_creation.general_configuration')">
     <v-card-text>
-      <v-text-field :label="$t('datasource_creation.datasource_name')" v-model="name"></v-text-field>
+      <v-text-field v-model="name" :label="$t('datasource_creation.datasource_name')" />
     </v-card-text>
   </v-card>
   <v-container class="mt-8">
     <v-row>
-      <v-spacer></v-spacer>
+      <v-spacer />
       <v-btn
         append-icon="mdi-arrow-right"
         color="primary"
@@ -22,9 +22,9 @@
   </v-container>
 </template>
 <script setup lang="ts">
-import type { GlobalConfiguration } from "@/types/datasource-global";
-
 import type { Ref } from "vue";
+
+import type { GlobalConfiguration } from "@/types/datasource-global";
 import { ref } from "vue";
 
 const emit = defineEmits<{

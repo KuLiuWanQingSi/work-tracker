@@ -8,14 +8,14 @@ export const NonceLength = 12;
 
 export async function wt_decrypt(key: CryptoKey, nonce: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
   return new Uint8Array(
-    await crypto.subtle.decrypt({ name: "AES-GCM", iv: nonce as BufferSource }, key, data as BufferSource)
+    await crypto.subtle.decrypt({ name: "AES-GCM", iv: nonce as BufferSource }, key, data as BufferSource),
   );
 }
 export async function wt_import_key(
   raw_key: Uint8Array,
-  usages: { encrypt?: boolean; decrypt?: boolean }
+  usages: { encrypt?: boolean; decrypt?: boolean },
 ): Promise<CryptoKey> {
-  const usage = new Array();
+  const usage: KeyUsage[] = [];
   if (usages.encrypt) {
     usage.push("encrypt");
   }
@@ -26,16 +26,8 @@ export async function wt_import_key(
 }
 
 export async function get_key_from_password(
-  password: Uint8Array,
-  configurations: Argon2Configuration
-): Promise<{ key: CryptoKey; raw_key: Uint8Array }>;
-export async function get_key_from_password(
-  password: string,
-  configurations: Argon2Configuration
-): Promise<{ key: CryptoKey; raw_key: Uint8Array }>;
-export async function get_key_from_password(
   password: Uint8Array | string,
-  configurations: Argon2Configuration
+  configurations: Argon2Configuration,
 ): Promise<{ key: CryptoKey; raw_key: Uint8Array }> {
   const encoded_password = typeof password === "string" ? new TextEncoder().encode(password) : password;
   const result = await argon2_hash({
@@ -47,20 +39,20 @@ export async function get_key_from_password(
     hash_length: 32,
   }).promise;
   if (!result.succeed) {
-    throw Error(result.error_message);
+    throw new Error(result.error_message);
   }
   const raw_key = result.result;
   const key = await wt_import_key(raw_key, { encrypt: true, decrypt: true });
-  return { key: key, raw_key: raw_key };
+  return { key, raw_key };
 }
 
 function parse_reviver(key: string, value: any) {
   const UInt8ArrayMark = "base64://";
   const MapMark = "map://";
   if (typeof value === "string" && value.startsWith(UInt8ArrayMark)) {
-    return Uint8Array.fromBase64(value.substring(UInt8ArrayMark.length));
+    return Uint8Array.fromBase64(value.slice(UInt8ArrayMark.length));
   }
-  if (value instanceof Array && value[0] === MapMark) {
+  if (Array.isArray(value) && value[0] === MapMark) {
     return new Map(value.slice(1));
   }
   return value;
@@ -75,7 +67,7 @@ export function load_datasource_phase1(source: string): EncryptedDatasource {
 export async function load_datasource_phase2(
   encrypted_database: EncryptedDatasource,
   credential: string | Uint8Array,
-  image_loader: ImageLoader
+  image_loader: ImageLoader,
 ): Promise<Datasource> {
   const user_key =
     typeof credential === "string"
@@ -84,18 +76,18 @@ export async function load_datasource_phase2(
   const raw_database_key = await wt_decrypt(
     user_key,
     encrypted_database.protection.key_nonce,
-    encrypted_database.protection.encrypted_key
+    encrypted_database.protection.encrypted_key,
   );
   const database_key = await wt_import_key(raw_database_key, { encrypt: true, decrypt: true });
   const encoded_database_internals = await wt_decrypt(
     database_key,
     encrypted_database.protection.data_nonce,
-    encrypted_database.internals
+    encrypted_database.internals,
   );
   const decoder = new TextDecoder();
   const internals = JSON.parse(
     decoder.decode(encoded_database_internals),
-    parse_reviver
+    parse_reviver,
   ) as DatasourceInternals;
   const database: Datasource = {
     runtime: {
@@ -118,7 +110,7 @@ export async function load_datasource_phase2(
 export async function open_image(
   encrypted_image: Blob,
   format: ImageFormatSpecification,
-  key: CryptoKey
+  key: CryptoKey,
 ): Promise<Blob> {
   const header_length = format.header_length;
   const array = await encrypted_image.bytes();

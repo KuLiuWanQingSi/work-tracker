@@ -4,31 +4,31 @@
       <v-card-title style="text-align: center">{{ $t("message.tags_to_be_modified") }}</v-card-title>
       <v-card-text>
         <v-card
+          v-for="(tag, tag_index) in local_state.tag_modifications"
           v-if="local_state.tag_modifications.length > 0"
-          v-for="(tag, index) in local_state.tag_modifications"
           :key="tag.config.name"
           class="mx-auto my-2"
           :title="tag.config.name"
         >
-          <template v-slot:append>
-            <v-switch v-model="tag.enabled" color="primary" hide-details></v-switch>
+          <template #append>
+            <v-switch v-model="tag.enabled" color="primary" hide-details />
           </template>
           <v-card-text>
             <v-autocomplete
-              v-model:search="input_receivers[index]!.content"
-              :items="selectable_tags[index]!"
+              v-model:search="input_receivers[tag_index]!.content"
+              :error="input_error_state[tag_index]!"
               hide-no-data
+              :items="selectable_tags[tag_index]!"
               no-filter
-              :error="input_error_state[index]!"
-              :prepend-icon="input_receivers[index]!.add_mode ? 'mdi-plus' : 'mdi-minus'"
-              @click:prepend="input_receivers[index]!.add_mode = !input_receivers[index]!.add_mode"
+              :prepend-icon="input_receivers[tag_index]!.add_mode ? 'mdi-plus' : 'mdi-minus'"
+              @click:prepend="input_receivers[tag_index]!.add_mode = !input_receivers[tag_index]!.add_mode"
               @keydown.enter="
-                input_error_state[index]! === false &&
-                  commit_tag(index, selectable_tags[index]!.at(0)!.internal_value)
+                input_error_state[tag_index]! === false &&
+                commit_tag(tag_index, selectable_tags[tag_index]!.at(0)!.internal_value)
               "
             >
-              <template v-slot:item="{ item }">
-                <v-list-item @click="commit_tag(index, item.raw.internal_value)">
+              <template #item="{ item }">
+                <v-list-item @click="commit_tag(tag_index, item.raw.internal_value)">
                   <v-list-item-title> {{ item.raw.display_name }} </v-list-item-title>
                 </v-list-item>
               </template>
@@ -37,28 +37,28 @@
               <v-list-item
                 v-for="(added_tag, index) in tag.added"
                 :key="added_tag"
-                :title="typeof added_tag === 'string' ? added_tag : tag.tag_pool[added_tag]!"
                 prepend-icon="mdi-plus"
+                :title="typeof added_tag === 'string' ? added_tag : tag.tag_pool[added_tag]!"
               >
-                <template v-slot:append>
-                  <v-btn icon="mdi-close-circle" @click="tag.added.splice(index, 1)"></v-btn>
+                <template #append>
+                  <v-btn icon="mdi-close-circle" @click="tag.added.splice(index, 1)" />
                 </template>
               </v-list-item>
               <v-list-item
                 v-for="(removed_tag, index) in tag.removed"
                 :key="removed_tag"
-                :title="tag.tag_pool[removed_tag]!"
                 prepend-icon="mdi-minus"
+                :title="tag.tag_pool[removed_tag]!"
               >
-                <template v-slot:append>
-                  <v-btn icon="mdi-close-circle" @click="tag.removed.splice(index, 1)"></v-btn>
+                <template #append>
+                  <v-btn icon="mdi-close-circle" @click="tag.removed.splice(index, 1)" />
                 </template>
               </v-list-item>
             </v-list>
           </v-card-text>
         </v-card>
         <v-sheet v-else class="pa-4 text-center mx-auto">
-          <v-icon class="mb-5" icon="mdi-tag-off" size="112"></v-icon>
+          <v-icon class="mb-5" icon="mdi-tag-off" size="112" />
           <h2 class="text-h5 mb-6">{{ $t("message.no_tag_to_be_edited.title") }}</h2>
           <p class="mb-4 text-medium-emphasis text-body-2">
             {{ $t("message.no_tag_to_be_edited.description") }}
@@ -68,37 +68,38 @@
       <v-card-actions class="justify-end">
         <v-btn
           color="primary"
-          :disabled="bind_items.some(({ errors }) => errors.some((error) => error !== null))"
+          :disabled="bind_items.some(({ errors }) => errors.some(error => error !== null))"
           :loading="busy"
           @click="commit_modifications"
-          >{{ $t("action.confirm") }}</v-btn
         >
+          {{ $t("action.confirm") }}
+        </v-btn>
         <v-btn @click="emit('close')">{{ $t("action.cancel") }}</v-btn>
       </v-card-actions>
     </v-card>
     <v-row>
-      <v-col cols="6" class="preview-container" ref="from-container">
+      <v-col ref="from-container" class="preview-container" cols="6">
         <v-sheet v-if="active_tag_modifications.length === 0" class="py-4 text-center mx-auto">
-          <v-icon class="mb-5" icon="mdi-database"></v-icon>
+          <v-icon class="mb-5" icon="mdi-database" />
           <h2 class="text-h5">{{ $t("message.tags_in_database") }}</h2>
         </v-sheet>
         <v-hover
-          v-else
           v-for="item in bind_items"
+          v-else
           :key="item.id"
           open-delay="300"
           @update:model-value="
-            (value) => {
+            value => {
               update_focused_item(item.id, value, 'from');
             }
           "
         >
-          <template v-slot:default="{ props }">
+          <template #default="{ props: hover }">
             <v-card
-              class="mb-4"
-              v-bind="props"
-              :color="local_state.focused_item === item.id ? 'primary' : ''"
+              v-bind="hover"
               ref="from-tags"
+              class="mb-4"
+              :color="local_state.focused_item === item.id ? 'primary' : ''"
               :data-item-id="item.id"
             >
               <template v-for="tag in active_tag_modifications" :key="tag.config.name">
@@ -106,7 +107,9 @@
                 <v-card-text>
                   <v-row>
                     <v-col
-                      v-for="tag_value in (item.data.entries!.get(tag.config.name) as (TagEntryData | undefined))?.tags ?? []"
+                      v-for="tag_value in (
+                        item.data.entries!.get(tag.config.name) as TagEntryData | undefined
+                      )?.tags ?? []"
                       :key="tag_value"
                       class="flex-grow-0"
                     >
@@ -121,28 +124,28 @@
           </template>
         </v-hover>
       </v-col>
-      <v-col cols="6" class="preview-container" ref="to-container">
+      <v-col ref="to-container" class="preview-container" cols="6">
         <v-sheet v-if="active_tag_modifications.length === 0" class="py-4 text-center mx-auto">
-          <v-icon class="mb-5" icon="mdi-database-edit"></v-icon>
+          <v-icon class="mb-5" icon="mdi-database-edit" />
           <h2 class="text-h5">{{ $t("message.tags_preview") }}</h2>
         </v-sheet>
         <v-hover
-          v-else
           v-for="item in bind_items"
+          v-else
           :key="item.id"
           open-delay="300"
           @update:model-value="
-            (value) => {
+            value => {
               update_focused_item(item.id, value, 'to');
             }
           "
         >
-          <template v-slot:default="{ props }">
+          <template #default="{ props: hover }">
             <v-card
-              v-bind="props"
+              v-bind="hover"
+              ref="to-tags"
               class="mb-4"
               :color="local_state.focused_item === item.id ? 'primary' : ''"
-              ref="to-tags"
               :data-item-id="item.id"
             >
               <template v-for="(tag, index) in active_tag_modifications" :key="tag.config.name">
@@ -150,9 +153,9 @@
                 <v-card-text>
                   <v-alert
                     v-if="item.errors[index]"
-                    type="error"
-                    :title="$t('message.error.entry_contains_error')"
                     class="mb-2"
+                    :title="$t('message.error.entry_contains_error')"
+                    type="error"
                   >
                     {{ explain_invalid_reason(item.errors[index]) }}
                   </v-alert>
@@ -176,35 +179,28 @@
     </v-row>
   </div>
 </template>
-<style lang="css" scoped>
-.preview-container {
-  max-height: 60vh;
-  overflow-y: scroll;
-  scrollbar-width: none;
-}
-</style>
 <script setup lang="ts">
-import { i18n } from "@/locales";
-import type { DatasourceEntryTagConfiguration } from "@/types/datasource-entry-details";
-import { useDatabaseStore } from "@/stores/database";
-import type { DataItem } from "@/types/datasource-data";
-import { inj_DisplayNotice } from "@/types/injections";
-import type { EntryData, TagEntryData } from "@/types/datasource-entry";
-import { explain_invalid_reason, ItemInvalidType, type ItemInvalidReason } from "@/types/invalid-items";
-import { dual_way_filter } from "@/procedures/utilities-pure";
-
-import type { Ref, Reactive } from "vue";
-import { onMounted, reactive, readonly, computed, ref, inject, useTemplateRef, watch } from "vue";
-import { useGoTo } from "vuetify";
+import type { Reactive, Ref } from "vue";
 import type { VCard } from "vuetify/components";
+import type { DataItem } from "@/types/datasource-data";
+import type { EntryData, TagEntryData } from "@/types/datasource-entry";
+import type { DatasourceEntryTagConfiguration } from "@/types/datasource-entry-details";
+import { computed, inject, onMounted, reactive, readonly, ref, useTemplateRef } from "vue";
+import { useGoTo } from "vuetify";
+import { i18n } from "@/locales";
+
 import { find_tag_candidates } from "@/procedures/tag-matching";
+import { dual_way_filter } from "@/procedures/utilities-pure";
+import { useDatabaseStore } from "@/stores/database";
+import { inj_DisplayNotice } from "@/types/injections";
+import { explain_invalid_reason, type ItemInvalidReason, ItemInvalidType } from "@/types/invalid-items";
 
 const { t } = i18n.global;
 const goto = useGoTo();
 const database_store = useDatabaseStore();
 const display_notice = inject(inj_DisplayNotice)!;
 const props = defineProps<{
-  item_ids: string[];
+  itemIds: string[];
 }>();
 const emit = defineEmits<{ close: [] }>();
 const local_state: Reactive<{
@@ -229,8 +225,8 @@ const to_container = useTemplateRef("to-container");
 function update_focused_item(runtime_id: string, value: boolean, side: "from" | "to") {
   if (value) {
     const predictor = (value: any) => value.$el.dataset.itemId === runtime_id;
-    const this_node = (side === "from" ? from_tags : to_tags).value!.find(predictor)!;
-    const that_node = (side === "from" ? to_tags : from_tags).value!.find(predictor)!;
+    const this_node = (side === "from" ? from_tags : to_tags).value!.find(node => predictor(node))!;
+    const that_node = (side === "from" ? to_tags : from_tags).value!.find(node => predictor(node))!;
     const this_container = side === "from" ? from_container : to_container;
     const that_container = side === "from" ? to_container : from_container;
     const additional_offset =
@@ -251,7 +247,7 @@ function update_focused_item(runtime_id: string, value: boolean, side: "from" | 
 
 // tag_modifications that are enabled
 const active_tag_modifications = computed(() =>
-  local_state.tag_modifications.filter(({ enabled }) => enabled)
+  local_state.tag_modifications.filter(({ enabled }) => enabled),
 );
 // this array of instances binds several attributes together to ease accessing to them
 //  id: the runtime id of the data item
@@ -265,12 +261,12 @@ const bind_items = computed(() =>
   local_state.items.map((data, index) => {
     const modified_tags: (string | number)[][] = [];
     const errors: (ItemInvalidReason | null)[] = [];
-    active_tag_modifications.value.forEach((tag) => {
+    for (const tag of active_tag_modifications.value) {
       const content = data.entries!.get(tag.config.name) as TagEntryData | undefined;
       const basic_tags = content?.tags ?? [];
-      const removed_tags = basic_tags.filter((value) => !tag.removed.includes(value));
+      const removed_tags = basic_tags.filter(value => !tag.removed.includes(value));
       const pure_add_tags = tag.added.filter(
-        (value) => typeof value === "string" || !removed_tags.includes(value)
+        value => typeof value === "string" || !removed_tags.includes(value),
       );
       const new_tags = pure_add_tags.concat(removed_tags);
       modified_tags.push(new_tags);
@@ -283,9 +279,9 @@ const bind_items = computed(() =>
       } else {
         errors.push(null);
       }
-    });
-    return { id: props.item_ids[index]!, data: data, modified_tags: modified_tags, errors: errors };
-  })
+    }
+    return { id: props.itemIds[index]!, data: data, modified_tags: modified_tags, errors: errors };
+  }),
 );
 const input_receivers: Reactive<
   {
@@ -298,20 +294,24 @@ const selectable_tags = computed(() => {
     ({ add_mode, content }, index): { display_name: string; internal_value: string | number }[] => {
       const modifications = local_state.tag_modifications[index]!;
       // find matches tags and filter out candidates that have already been added or removed
-      return find_tag_candidates(content, modifications.tag_pool, {allow_creating: add_mode && content.length !== 0}).map(({display, value}) => ({
-        display_name: display,
-        internal_value: value,
-      })).filter(
-        ({ internal_value }) =>
-          !modifications.added.includes(internal_value) &&
-          (typeof internal_value === "string" || !modifications.removed.includes(internal_value))
-      );
-    }
+      return find_tag_candidates(content, modifications.tag_pool, {
+        allow_creating: add_mode && content.length > 0,
+      })
+        .map(({ display, value }) => ({
+          display_name: display,
+          internal_value: value,
+        }))
+        .filter(
+          ({ internal_value }) =>
+            !modifications.added.includes(internal_value) &&
+            (typeof internal_value === "string" || !modifications.removed.includes(internal_value)),
+        );
+    },
   );
 });
 const input_error_state = computed(() => {
   return input_receivers.map(({ content }, index) =>
-    selectable_tags.value[index]!.every(({ display_name }) => display_name !== content)
+    selectable_tags.value[index]!.every(({ display_name }) => display_name !== content),
   );
 });
 function commit_tag(index: number, internal_value: string | number) {
@@ -325,18 +325,18 @@ function commit_tag(index: number, internal_value: string | number) {
 }
 onMounted(() => {
   local_state.tag_modifications = database_store.entries
-    .filter((entry) => entry.type === "tag")
-    .map((config) => ({
+    .filter(entry => entry.type === "tag")
+    .map(config => ({
       config: readonly(config),
       tag_pool: database_store.tags.get(config.name) ?? [],
       enabled: false,
       added: [],
       removed: [],
     }));
-  local_state.tag_modifications.forEach(() => {
+  for (const _ of local_state.tag_modifications) {
     input_receivers.push({ add_mode: true, content: "" });
-  });
-  local_state.items = props.item_ids.map((runtime_id) => database_store.data.get(runtime_id)!);
+  }
+  local_state.items = props.itemIds.map(runtime_id => database_store.data.get(runtime_id)!);
   local_state.ready = true;
 });
 
@@ -364,39 +364,34 @@ async function commit_modifications_implementation() {
           }
           return [configuration.name, content];
         })
-        .filter((item) => item !== null);
+        .filter(item => item !== null);
       const new_data_entries = new Map(directly_referenced);
       // 2.2. we add tag entries to the new entries map
       //  note modified_tags contains all tags, both those stored for this item in the database previously,
       //  and also newly created ones. We do not need the original value in the existing data mapping
-      modified_tags.forEach((tags, index) => {
-        console.log(tags, tags.length);
+      for (const [index, tags] of modified_tags.entries()) {
         if (tags.length === 0) {
-          return; // no tags, a entry should not be generated according to the database format specification
+          continue; // no tags, a entry should not be generated according to the database format specification
         }
         // 2.2.1. we split tags into two parts, in which only the second part need to be registered
-        const [existing_tags, new_tags] = dual_way_filter(tags, (value) => typeof value === "number") as [
+        const [existing_tags, new_tags] = dual_way_filter(tags, value => typeof value === "number") as [
           number[],
-          string[]
+          string[],
         ];
         // 2.2.2. we register the new tags
         const configuration = active_modifications[index]!.config;
         const registered_tags = patch.register_tags(configuration.name, new_tags);
         // 2.2.3. emit the entry
         const content: TagEntryData = { tags: existing_tags.concat(registered_tags) };
-        console.log(content);
-        console.log(configuration.name);
         new_data_entries.set(configuration.name, content);
-        console.log(new_data_entries);
-      });
-      console.log(new_data_entries);
+      }
 
       // 2.3. we reference the image field directly from the original data instance since no modification will
       //  be done to this field.
       const data_item: DataItem = { image: data.image, entries: new_data_entries };
       // 2.4. build the structure which is ready to be placed into database
       return { runtime_id: id, source: data_item };
-    }
+    },
   );
   // 3. submit the modification
   const failures = await database_store.place_item(new_items);
@@ -407,7 +402,7 @@ async function commit_modifications_implementation() {
   display_notice(
     "error",
     t("cannot_commit_modification"),
-    failures.map(({ index, reason }) => `${index}: ${explain_invalid_reason(reason)}`).join("\n")
+    failures.map(({ index, reason }) => `${index}: ${explain_invalid_reason(reason)}`).join("\n"),
   );
 }
 function commit_modifications() {
@@ -417,3 +412,10 @@ function commit_modifications() {
   });
 }
 </script>
+<style lang="css" scoped>
+.preview-container {
+  max-height: 60vh;
+  overflow-y: scroll;
+  scrollbar-width: none;
+}
+</style>

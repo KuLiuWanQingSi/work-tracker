@@ -1,13 +1,12 @@
-// Plugins
+import type { PluginOption } from "vite";
+import { fileURLToPath, URL } from "node:url";
 import Vue from "@vitejs/plugin-vue";
-import Vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
+import { defineConfig } from "vite";
+
 import vueDevTools from "vite-plugin-vue-devtools";
 
+import Vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
 import filename_sanitizer from "./src/build-utils/filename_sanitizer";
-
-// Utilities
-import { defineConfig, PluginOption } from "vite";
-import { fileURLToPath, URL } from "node:url";
 
 const EntryPath = "src/extension/index.html";
 

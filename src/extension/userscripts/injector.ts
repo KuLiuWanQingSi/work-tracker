@@ -22,14 +22,14 @@ function inject_styles() {
 }
 .wt-alert-container {
   border-top-style: solid;
-	border-top-width: 6px;
-	border-top-color: #cf6679;
-	padding: 12px 28px;
-	position: fixed;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-	background-color: #18191b;
+  border-top-width: 6px;
+  border-top-color: #cf6679;
+  padding: 12px 28px;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #18191b;
   z-index: 99999999;
   color: #ffffff;
 }
@@ -39,7 +39,7 @@ function inject_styles() {
 }
 .wt-alert-container > button {
   width: 100%;
-}`
+}`,
   );
   Runner.add_style(Indicator.get_css());
 }
@@ -49,34 +49,33 @@ function show_alert(config: { title?: string; content?: string }) {
   container.classList.add("wt-alert-container");
   if (config.title) {
     const title = document.createElement("h3");
-    title.innerText = config.title;
-    container.appendChild(title);
+    title.textContent = config.title;
+    container.append(title);
   }
   if (config.content) {
     const parts = config.content.split("\n");
-    parts.forEach((content, index) => {
-      if (index !== 0) {
-        container.appendChild(document.createElement("br"));
-      }
-      const content_holder = document.createElement("p");
-      content_holder.innerText = content;
-      container.appendChild(content_holder);
-    });
+    container.append(
+      ...parts.map(content => {
+        const content_holder = document.createElement("p");
+        content_holder.textContent = content;
+        return content_holder;
+      }),
+    );
   }
   const close_button = document.createElement("button");
-  close_button.innerText = "Close";
+  close_button.textContent = "Close";
   close_button.addEventListener("click", () => {
-    document.body.removeChild(container);
+    container.remove();
   });
-  container.appendChild(close_button);
-  document.body.appendChild(container);
+  container.append(close_button);
+  document.body.append(container);
 }
 
 function create_indicator(): Indicator {
   inject_styles();
   const container = document.createElement("div");
   container.classList.add("wt-indicator-container");
-  document.body.appendChild(container);
+  document.body.append(container);
   return new Indicator(container);
 }
 
@@ -95,7 +94,7 @@ type InternalState = {
 function configure_indicator(
   indicator: Indicator,
   state: IndicatorState,
-  action_map: Map<IndicatorState, () => void>
+  action_map: Map<IndicatorState, () => void>,
 ) {
   indicator.action = action_map.get(state)!;
   indicator.state = state;
@@ -104,7 +103,7 @@ async function user_script_guard(
   action: Promise<void>,
   name: string,
   indicator: Indicator,
-  action_map: Map<IndicatorState, () => void>
+  action_map: Map<IndicatorState, () => void>,
 ): Promise<boolean> {
   try {
     await action;
@@ -121,7 +120,7 @@ async function user_script_guard(
 async function update_materials(
   materials: InternalState,
   updates: { database?: InjectorDatabases; script?: InjectorScripts },
-  action_map: Map<IndicatorState, () => void>
+  action_map: Map<IndicatorState, () => void>,
 ) {
   // how should in-place update be done?
   // 1. if nothing is modified, nothing to be done, just update the indicator
@@ -159,7 +158,7 @@ async function update_materials(
     // update the script instance
     if (updates.script) {
       materials.script = updates.script;
-      materials.script_instance = await materials.script.get_instance();
+      materials.script_instance = (await materials.script.get_instance()).unwrap();
     }
     // (re)start the script
     const data = await materials.database.get_content();
@@ -182,7 +181,12 @@ async function update_materials(
   } else if (updates.database) {
     // the database is updated but the script is not updated
     //  first, check if the database can be updated in-place with reset_data
-    if (materials.script_instance.reset_data !== undefined) {
+    if (materials.script_instance.reset_data === undefined) {
+      // otherwise, a stop/run is required to update the data
+      if (await stop_run()) {
+        return;
+      }
+    } else {
       // if it can, prefer this since it avoids some overhead
       const new_data = await materials.database.get_content();
       if (
@@ -190,14 +194,9 @@ async function update_materials(
           materials.script_instance.reset_data(new_data),
           "restart",
           materials.indicator,
-          action_map
+          action_map,
         )
       ) {
-        return;
-      }
-    } else {
-      // otherwise, a stop/run is required to update the data
-      if (await stop_run()) {
         return;
       }
     }
@@ -208,37 +207,35 @@ async function update_materials(
 function build_state_action_map(materials: InternalState): Map<IndicatorState, () => void> {
   const result: Map<IndicatorState, () => void> = new Map();
   const noop = () => {};
-  const refetch = () => {
+  const refetch = async () => {
     configure_indicator(materials.indicator, "updating", result);
-    Promise.allSettled([
-      materials.configuration.update_database(materials.database.id, {}),
-      materials.configuration.update_script(materials.script.id, {}),
-    ]).then((results) => {
-      const errors = results
-        .map((result) => (result.status === "rejected" ? String(result.reason) : null))
-        .filter((item) => item !== null);
-      if (errors.length > 0) {
-        configure_indicator(materials.indicator, "degraded", result);
-        show_alert({
-          title: "failed to update",
-          content: `This is caused by the following errors:\n${errors.join("\n")}`,
-        });
-        return;
-      }
-      if (results[0].status === "rejected" || results[1].status === "rejected") {
-        return;
-      }
-      const new_database = results[0].value;
-      const new_script = results[1].value;
-      return update_materials(
-        materials,
-        {
-          database: new_database.is_same(materials.database) ? undefined : new_database,
-          script: new_script.is_same(materials.script) ? undefined : new_script,
-        },
-        result
-      );
-    });
+    const database_result = await materials.configuration.update_database(materials.database.id, {});
+    const script_result = await materials.configuration.update_script(materials.script.id, {});
+    const errors = [];
+    if (database_result.is_err()) {
+      errors.push(String(database_result.unwrap_error()));
+    }
+    if (script_result.is_err()) {
+      errors.push(String(script_result.unwrap_error()));
+    }
+    if (errors.length > 0) {
+      show_alert({
+        title: "failed to update due to following reasons",
+        content: errors.join("\n"),
+      });
+      configure_indicator(materials.indicator, "degraded", result);
+      return;
+    }
+    const new_database = database_result.unwrap();
+    const new_script = script_result.unwrap();
+    return update_materials(
+      materials,
+      {
+        database: new_database.is_same(materials.database) ? undefined : new_database,
+        script: new_script.is_same(materials.script) ? undefined : new_script,
+      },
+      result,
+    );
   };
   const reload_page = () => {
     window.location.reload();
@@ -259,23 +256,27 @@ export async function start_injector(host: InjectorHosts, configuration: Injecto
 
   // create container for database and script
   const { database, script } = configuration.get_components(host);
-  const script_instance = await script.get_instance();
+  const script_instance = (await script.get_instance()).unwrap();
   const database_content = await database.get_content();
   const materials: InternalState = {
-    database: database,
-    script: script,
-    host: host,
-    configuration: configuration,
-    indicator: indicator,
-    script_instance: script_instance,
+    database,
+    script,
+    host,
+    configuration,
+    indicator,
+    script_instance,
   };
 
   // build action map
   const action_map = build_state_action_map(materials);
 
   // get ready for possible updates
-  configuration.setup_autoupdate();
-  configuration.register_host_watcher(host.name, (modification) => {
+  configuration.setup_autoupdate(update => {
+    if (update.is_err()) {
+      configure_indicator(indicator, "pending-update", action_map);
+    }
+  });
+  configuration.register_host_watcher(host.id, modification => {
     // take no reaction if currently in unstable state
     if (indicator.state !== "active") {
       return;
@@ -284,7 +285,8 @@ export async function start_injector(host: InjectorHosts, configuration: Injecto
       // the host was removed entirely
       modification.removed ||
       // the host was not removed, but no longer matches current address
-      (modification.modified.matcher && window.location.href.match(RegExp(modification.host.host)) === null)
+      (modification.modified.matcher &&
+        window.location.href.match(new RegExp(modification.host.host)) === null)
     ) {
       return configure_indicator(indicator, "dangling", action_map);
     }
@@ -295,7 +297,7 @@ export async function start_injector(host: InjectorHosts, configuration: Injecto
         database: modification.modified.database ? database : undefined,
         script: modification.modified.script ? script : undefined,
       },
-      action_map
+      action_map,
     );
   });
 

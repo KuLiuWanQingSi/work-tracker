@@ -1,4 +1,4 @@
-import { Sorting } from "@/definitions/sorting_types";
+import type { Sorting } from "@/definitions/sorting_types";
 
 export type EntryType = "string" | "tag" | "rating";
 
@@ -13,16 +13,14 @@ export interface DatasourceEntryStringExtraConfiguration {
   unique: boolean;
 }
 export interface DatasourceEntryStringConfiguration
-  extends DatasourceEntryBaseConfiguration,
-    DatasourceEntryStringExtraConfiguration {}
+  extends DatasourceEntryBaseConfiguration, DatasourceEntryStringExtraConfiguration {}
 
 export interface DatasourceEntryTagExtraConfiguration {
   type: "tag";
   exclusive: boolean;
 }
 export interface DatasourceEntryTagConfiguration
-  extends DatasourceEntryBaseConfiguration,
-    DatasourceEntryTagExtraConfiguration {}
+  extends DatasourceEntryBaseConfiguration, DatasourceEntryTagExtraConfiguration {}
 
 export interface DatasourceEntryRatingExtraConfiguration {
   type: "rating";
@@ -30,8 +28,7 @@ export interface DatasourceEntryRatingExtraConfiguration {
   hints: string[] | null;
 }
 export interface DatasourceEntryRatingConfiguration
-  extends DatasourceEntryBaseConfiguration,
-    DatasourceEntryRatingExtraConfiguration {}
+  extends DatasourceEntryBaseConfiguration, DatasourceEntryRatingExtraConfiguration {}
 
 export type DatasourceEntryExtraConfiguration =
   | DatasourceEntryStringExtraConfiguration

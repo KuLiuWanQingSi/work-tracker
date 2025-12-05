@@ -1,17 +1,16 @@
-// Plugins
+import type { PluginOption } from "vite";
+import { fileURLToPath, URL } from "node:url";
+import Vue from "@vitejs/plugin-vue";
 import AutoImport from "unplugin-auto-import/vite";
 import Components from "unplugin-vue-components/vite";
-import Layouts from "vite-plugin-vue-layouts-next";
-import Vue from "@vitejs/plugin-vue";
-import VueRouter from "unplugin-vue-router/vite";
 import { VueRouterAutoImports } from "unplugin-vue-router";
-import Vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
+import VueRouter from "unplugin-vue-router/vite";
+import { defineConfig } from "vite";
 import vueDevTools from "vite-plugin-vue-devtools";
-import filename_sanitizer from "./src/build-utils/filename_sanitizer";
+import Layouts from "vite-plugin-vue-layouts-next";
 
-// Utilities
-import { defineConfig, PluginOption } from "vite";
-import { fileURLToPath, URL } from "node:url";
+import Vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
+import filename_sanitizer from "./src/build-utils/filename_sanitizer";
 
 // some of the plugins are for developing purpose and should not be included into release build
 function get_plugins(command: "serve" | "build"): PluginOption[] {

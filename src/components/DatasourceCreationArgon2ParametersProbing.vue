@@ -5,21 +5,15 @@
     <v-row>
       <v-slider
         v-model="kfd_time"
-        :min="10"
-        :max="16000"
-        :step="1"
-        :label="$t('datasource_creation.kdf_target_time')"
         color="primary"
         hide-details
+        :label="$t('datasource_creation.kdf_target_time')"
+        :max="16000"
+        :min="10"
+        :step="1"
       >
-        <template v-slot:append>
-          <v-text-field
-            v-model="kfd_time"
-            density="compact"
-            suffix="ms"
-            type="number"
-            style="width: 128px"
-          ></v-text-field>
+        <template #append>
+          <v-text-field v-model="kfd_time" density="compact" style="width: 128px" suffix="ms" type="number" />
         </template>
       </v-slider>
     </v-row>
@@ -27,18 +21,28 @@
       <div class="mx-auto" style="margin-top: -8px">
         <v-chip variant="text">{{ $t("datasource_creation.kdf_target_time_hint") }}</v-chip>
         <v-bottom-sheet inset>
-          <template v-slot:activator="{ props: show_kdf_learn_more }">
-            <v-chip variant="text" color="secondary" v-bind="show_kdf_learn_more">{{
+          <template #activator="{ props: show_kdf_learn_more }">
+            <v-chip color="secondary" variant="text" v-bind="show_kdf_learn_more">{{
               $t("action.learn_more")
             }}</v-chip>
           </template>
           <v-card>
-            <v-card-title style="text-align: center;">{{ $t("datasource_creation.security.security_faqs") }}</v-card-title>
-            <v-card v-for="id in ['login_time', 'probing_time', 'online_security', 'access_by_third_party', 'implement_detail']" :key="id">
+            <v-card-title style="text-align: center">{{
+              $t("datasource_creation.security.security_faqs")
+            }}</v-card-title>
+            <v-card
+              v-for="id in [
+                'login_time',
+                'probing_time',
+                'online_security',
+                'access_by_third_party',
+                'implement_detail',
+              ]"
+              :key="id"
+            >
               <v-card-title>{{ $t(`datasource_creation.security.${id}.question`) }}</v-card-title>
               <v-card-text>{{ $t(`datasource_creation.security.${id}.answer`) }}</v-card-text>
             </v-card>
-
           </v-card>
         </v-bottom-sheet>
       </div>
@@ -49,42 +53,42 @@
       <v-expansion-panel-text>
         <v-container>
           <v-row justify="space-between">
-            <v-col cols="1"><v-switch v-model="argon2_memory_enabled" color="primary"></v-switch></v-col>
-            <v-col cols="11"
-              ><v-text-field
-                suffix="MiB"
-                type="number"
+            <v-col cols="1"><v-switch v-model="argon2_memory_enabled" color="primary" /></v-col>
+            <v-col cols="11">
+              <v-text-field
                 v-model="argon2_memory"
                 :disabled="!argon2_memory_enabled"
                 :label="$t('datasource_creation.kdf_memory')"
-              ></v-text-field
-            ></v-col>
+                suffix="MiB"
+                type="number"
+              />
+            </v-col>
           </v-row>
           <v-row justify="space-between">
             <v-col cols="1">
-              <v-switch v-model="argon2_iterations_enabled" color="primary"></v-switch>
+              <v-switch v-model="argon2_iterations_enabled" color="primary" />
             </v-col>
             <v-col cols="11">
               <v-text-field
-                type="number"
                 v-model="argon2_iterations"
                 :disabled="!argon2_iterations_enabled"
                 :hint="$t('datasource_creation.kdf_iteration_hint')"
                 :label="$t('datasource_creation.kdf_iteration')"
-              ></v-text-field>
+                type="number"
+              />
             </v-col>
           </v-row>
           <v-row justify="space-between">
             <v-col cols="1">
-              <v-switch v-model="argon2_threads_enabled" color="primary"></v-switch>
+              <v-switch v-model="argon2_threads_enabled" color="primary" />
             </v-col>
             <v-col cols="11">
               <v-text-field
-                type="number"
                 v-model="argon2_threads"
                 :disabled="!argon2_threads_enabled"
                 :label="$t('datasource_creation.kdf_threads')"
-              ></v-text-field>
+                type="number"
+              />
             </v-col>
           </v-row>
         </v-container>
@@ -95,37 +99,37 @@
     <v-btn
       block
       color="primary"
-      @click="argon2_iterations_enabled ? validate_argon2_parameters() : probe_argon2_parameters()"
       :loading="handling_argon2_parameters"
+      @click="argon2_iterations_enabled ? validate_argon2_parameters() : probe_argon2_parameters()"
     >
       {{
         argon2_iterations_enabled
           ? $t("datasource_creation.validate_argon2_parameters")
           : $t("datasource_creation.probe_argon2_parameters")
       }}
-      <template v-slot:loader>
-        <v-progress-circular indeterminate></v-progress-circular>
+      <template #loader>
+        <v-progress-circular indeterminate />
         <span v-if="!argon2_iterations_enabled" class="mx-2">{{ $t("message.time_taking_action") }}</span>
       </template>
     </v-btn>
     <v-range-slider
       v-if="probing_range.shown"
-      disabled
-      :min="probing_range.minimum"
-      :max="probing_range.maximum"
       v-model="probing_range.current_range"
+      disabled
+      :max="probing_range.maximum"
+      :min="probing_range.minimum"
       thumb-size="12"
-    ></v-range-slider>
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { i18n } from "@/locales";
-import { argon2_hash } from "@/procedures/argon2-hash";
-import { inj_DisplayNotice } from "@/types/injections";
-
 import type { Ref, ShallowReactive } from "vue";
 import { inject, ref, shallowReactive } from "vue";
+import { i18n } from "@/locales";
+
+import { argon2_hash } from "@/procedures/argon2-hash";
+import { inj_DisplayNotice } from "@/types/injections";
 
 const { t } = i18n.global;
 const emit = defineEmits<{
@@ -218,7 +222,7 @@ function validate_argon2_parameters() {
     ...fixed_parameters,
     time: iteration,
   });
-  promise.then((result) => {
+  promise.then(result => {
     if (result.succeed) {
       argon2_parameters.time = iteration;
       argon2_parameters.memory = fixed_parameters.memory;
@@ -227,7 +231,7 @@ function validate_argon2_parameters() {
       display_notice(
         "error",
         t("message.error.failed_to_argon2"),
-        `${result.error_code}: ${result.error_message}`
+        `${result.error_code}: ${result.error_message}`,
       );
     }
     argon2_parameters_finished();
@@ -239,8 +243,8 @@ function probe_argon2_parameters() {
   const fixed_parameters = _get_fixed_argon2_parameters();
   const timeout = Math.round(Number(kfd_time.value) + Number(kfd_time.value) * 0.1);
   const probing = (async () => {
-    let lower: number = 1;
-    let upper: number = -100;
+    let lower = 1;
+    let upper = -100;
     probing_range.minimum = lower;
     probing_range.maximum = -upper;
     probing_range.current_range = [lower, -upper];
@@ -259,15 +263,11 @@ function probe_argon2_parameters() {
         display_notice(
           "error",
           t("message.error.failed_to_argon2"),
-          `${result.error_code}: ${result.error_message}`
+          `${result.error_code}: ${result.error_message}`,
         );
         return null;
       }
-      if (!result.succeed) {
-        // running for too long, try to decrease iterations
-        upper = iterations;
-        probing_range.current_range = [lower, upper];
-      } else {
+      if (result.succeed) {
         lower = iterations;
         if (upper < 0) {
           upper *= 2;
@@ -276,11 +276,15 @@ function probe_argon2_parameters() {
         } else {
           probing_range.current_range = [lower, upper];
         }
+      } else {
+        // running for too long, try to decrease iterations
+        upper = iterations;
+        probing_range.current_range = [lower, upper];
       }
     }
     return Math.floor((lower + upper) / 2);
   })();
-  probing.then((value) => {
+  probing.then(value => {
     probing_range.shown = false;
     if (value !== null && value !== 0) {
       argon2_parameters.time = value;

@@ -1,19 +1,18 @@
 <template>
   <v-row justify="space-around">
     <v-rating
-      :length="(configuration as DatasourceEntryRatingExtraConfiguration).maximum_score"
       v-model="data.score"
-      density="comfortable"
       clearable
-    >
-    </v-rating>
+      density="comfortable"
+      :length="(configuration as DatasourceEntryRatingExtraConfiguration).maximum_score"
+    />
   </v-row>
   <v-row justify="space-around">
     <v-col cols="1">
-      <v-switch v-model="data.use_comment" color="primary" :disabled="data.score === 0"></v-switch>
+      <v-switch v-model="data.use_comment" color="primary" :disabled="data.score === 0" />
     </v-col>
     <v-col cols="10">
-      <v-text-field v-model="data.comment" :disabled="!data.use_comment"></v-text-field>
+      <v-text-field v-model="data.comment" :disabled="!data.use_comment" />
     </v-col>
   </v-row>
 </template>
@@ -29,7 +28,7 @@ import { watch } from "vue";
 defineProps<{ configuration: DatasourceEntryConfiguration }>();
 const data = defineModel<InternalRatingEntryData>("data", { required: true });
 watch(data.value, () => {
-  if(data.value.comment.trim() !== data.value.comment){
+  if (data.value.comment.trim() !== data.value.comment) {
     data.value.comment = data.value.comment.trim();
   }
 });

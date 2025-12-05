@@ -1,4 +1,3 @@
-import { Sorting } from "@/definitions/sorting_types";
 import type { EntryData, RatingEntryData, StringEntryData, TagEntryData } from "@/types/datasource-entry";
 import type {
   DatasourceEntryConfiguration,
@@ -6,6 +5,7 @@ import type {
   DatasourceEntryStringConfiguration,
   DatasourceEntryTagConfiguration,
 } from "@/types/datasource-entry-details";
+import { Sorting } from "@/definitions/sorting_types";
 
 function pick_numeric_part(value: string) {
   const match_result = value.match(/\d+/);
@@ -34,70 +34,71 @@ export function sorting_date_to_string(value: string): string | null {
 
 function to_sorting_string(config: DatasourceEntryStringConfiguration, data: StringEntryData): string | null {
   switch (config.sorting_method) {
-    case Sorting.AsDate:
+    case Sorting.AsDate: {
       return sorting_date_to_string(data.value);
-    case Sorting.AsNumber:
+    }
+    case Sorting.AsNumber: {
       return sorting_number_to_string(data.value);
-    case Sorting.AsString:
+    }
+    case Sorting.AsString: {
       return data.value;
-    default:
+    }
+    default: {
       return null;
+    }
   }
 }
 function to_sorting_rating(config: DatasourceEntryRatingConfiguration, data: RatingEntryData): string | null {
   switch (config.sorting_method) {
-    case Sorting.AsNumber:
+    case Sorting.AsNumber: {
       return pack_number_to_string(data.score);
-    default:
+    }
+    default: {
       return null;
+    }
   }
 }
 function to_sorting_tag(
   config: DatasourceEntryTagConfiguration,
   data: TagEntryData,
-  tags: string[]
+  tags: string[],
 ): string | null {
   if (config.sorting_method === Sorting.Disabled) {
     return null;
   }
   const padding_target = Math.ceil(Math.log10(tags.length));
-  const result = data.tags.map((value) => value.toString().padStart(padding_target, "0")).join("");
+  const result = data.tags.map(value => value.toString().padStart(padding_target, "0")).join("");
   return result;
 }
 
 export function to_sorting(
   config: DatasourceEntryStringConfiguration,
-  data: StringEntryData
+  data: StringEntryData,
 ): string | number | null;
 export function to_sorting(config: DatasourceEntryRatingConfiguration, data: RatingEntryData): string | null;
 export function to_sorting(
   config: DatasourceEntryTagConfiguration,
   data: TagEntryData,
-  tags: string[]
+  tags: string[],
 ): string | null;
-export function to_sorting(
-  config: DatasourceEntryConfiguration,
-  data: EntryData,
-  tags?: string[]
-): string | null;
+export function to_sorting(config: DatasourceEntryConfiguration, data: EntryData, tags?: string[]): string | null;
 
 // convert data of certain entry into comparable format.
 //  result might be number / string if conversion succeed, which will be consistently predictable from the
 //  data type of the entry and the sorting method. If the conversion failed, null is returned
-export function to_sorting(
-  config: DatasourceEntryConfiguration,
-  data: EntryData,
-  tags?: string[]
-): string | null {
+export function to_sorting(config: DatasourceEntryConfiguration, data: EntryData, tags?: string[]): string | null {
   switch (config.type) {
-    case "string":
+    case "string": {
       return to_sorting_string(config, data as StringEntryData);
-    case "rating":
+    }
+    case "rating": {
       return to_sorting_rating(config, data as RatingEntryData);
-    case "tag":
+    }
+    case "tag": {
       if (tags === undefined) {
         return null;
       }
       return to_sorting_tag(config, data as TagEntryData, tags);
+    }
   }
 }

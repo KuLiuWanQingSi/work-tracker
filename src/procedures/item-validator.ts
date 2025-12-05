@@ -1,4 +1,3 @@
-import { Sorting } from "@/definitions/sorting_types";
 import type {
   EntriesConfiguration,
   InternalDataItem,
@@ -8,12 +7,13 @@ import type {
   StringEntryData,
 } from "@/types/datasource-entry";
 import type { DatasourceEntryConfiguration, EntryType } from "@/types/datasource-entry-details";
-import { ItemInvalidType, type ItemInvalidReason } from "@/types/invalid-items";
+import { Sorting } from "@/definitions/sorting_types";
+import { type ItemInvalidReason, ItemInvalidType } from "@/types/invalid-items";
 import { to_sorting } from "./sorting";
 
 function entry_checker_common(
   config: DatasourceEntryConfiguration,
-  data: InternalEntryData
+  data: InternalEntryData,
 ): ItemInvalidReason | null {
   // @ts-ignore
   if (config.sorting_method !== Sorting.Disabled && to_sorting(config, data, []) === null) {
@@ -28,7 +28,7 @@ function entry_checker_common(
 
 function entry_checker_string(
   config: DatasourceEntryConfiguration,
-  data_: InternalEntryData | undefined
+  data_: InternalEntryData | undefined,
 ): ItemInvalidReason | null {
   if (config.type !== "string") {
     return null; // never happens
@@ -44,7 +44,7 @@ function entry_checker_string(
 }
 function entry_checker_rating(
   config: DatasourceEntryConfiguration,
-  data_: InternalEntryData | undefined
+  data_: InternalEntryData | undefined,
 ): ItemInvalidReason | null {
   if (config.type !== "rating") {
     return null; // never happens
@@ -60,7 +60,7 @@ function entry_checker_rating(
 }
 function entry_checker_tag(
   config: DatasourceEntryConfiguration,
-  data_: InternalEntryData | undefined
+  data_: InternalEntryData | undefined,
 ): ItemInvalidReason | null {
   if (config.type !== "tag") {
     return null; // never happens
@@ -89,21 +89,19 @@ const checkers: Map<
 export function validate_internal_item(
   item: InternalDataItem,
   override_image: string,
-  configuration: EntriesConfiguration
+  configuration: EntriesConfiguration,
 ): ItemInvalidReason[] {
   const reasons: ItemInvalidReason[] = [];
   // check if image is included according to the configuration
-  if (configuration.image_size !== undefined) {
-    if (item.image === undefined && override_image === "") {
-      reasons.push({ type: ItemInvalidType.missing });
-    }
+  if (configuration.image_size !== undefined && item.image === undefined && override_image === "") {
+    reasons.push({ type: ItemInvalidType.missing });
   }
   // check each entry
-  configuration.entries.forEach((entry) => {
+  for (const entry of configuration.entries) {
     const check_result = checkers.get(entry.type)!(entry, item.entries.get(entry.name));
     if (check_result !== null) {
       reasons.push(check_result);
     }
-  });
+  }
   return reasons;
 }

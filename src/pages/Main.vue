@@ -1,8 +1,3 @@
-<style lang="css">
-.hide-scroll-bar {
-  scrollbar-width: none;
-}
-</style>
 <template>
   <v-app-bar>
     <v-app-bar-title>
@@ -13,9 +8,9 @@
       <v-tooltip activator="parent" location="bottom">{{ $t("action.download_delta") }}</v-tooltip>
     </v-btn>
     <v-btn icon @click="database_store.save_all">
-      <v-icon :color="database_store.database_modified ? 'warning' : ''"
-        >mdi-download-multiple-outline</v-icon
-      >
+      <v-icon :color="database_store.database_modified ? 'warning' : ''">
+        mdi-download-multiple-outline
+      </v-icon>
       <v-tooltip activator="parent" location="bottom">{{ $t("action.download_full_database") }}</v-tooltip>
     </v-btn>
     <v-btn icon @click="create_new_data_item">
@@ -24,7 +19,7 @@
         $t("acTion.create", { target: $t("terms.new_database_item") })
       }}</v-tooltip>
     </v-btn>
-    <v-btn v-if="selections.selected_items.size !== 0" icon @click="show_batched_editor = true">
+    <v-btn v-if="selections.selected_items.size > 0" icon @click="show_batched_editor = true">
       <v-icon>mdi-pencil-box-multiple-outline</v-icon>
       <v-tooltip activator="parent" location="bottom">{{ $t("action.batch_tag_modify") }}</v-tooltip>
     </v-btn>
@@ -42,22 +37,22 @@
     </v-btn>
   </v-app-bar>
   <v-data-iterator :items="display_items" :items-per-page="item_per_page" :page="current_page">
-    <template v-slot:header>
+    <template #header>
       <v-sheet class="fill-width">
         <v-container>
           <v-row>
             <v-col cols="8">
               <v-autocomplete
-                prepend-icon="mdi-magnify"
                 v-model:search="search_input"
-                :items="search_autocompletes"
-                @keydown.enter="update_search"
-                hide-no-data
-                no-filter
                 :error="!search_input_valid"
+                hide-no-data
                 item-title="command"
+                :items="search_autocompletes"
+                no-filter
+                prepend-icon="mdi-magnify"
+                @keydown.enter="update_search"
               >
-                <template v-slot:item="{ item }">
+                <template #item="{ item }">
                   <v-list-item @click="item.raw.action">
                     <v-list-item-title> {{ item.raw.command }} </v-list-item-title>
                     <v-list-item-subtitle v-if="item.raw.explanation !== undefined">
@@ -69,16 +64,16 @@
             </v-col>
             <v-col cols="4">
               <v-select
-                :items="available_sorting_methods"
-                item-title="name"
-                return-object
                 v-model="current_sorting"
+                item-title="name"
+                :items="available_sorting_methods"
                 :label="$t('hint.sort_by')"
-              ></v-select>
+                return-object
+              />
             </v-col>
             <v-col cols="4">
               <v-btn
-                v-if="display_items.every((item) => selections.selected_items.has(item))"
+                v-if="display_items.every(item => selections.selected_items.has(item))"
                 @click="change_all_selected_state({ selected: false })"
               >
                 {{ $t("action.unselect_all") }}
@@ -98,20 +93,28 @@
                 color="primary"
                 hide-details
                 :label="$t('action.show_only_selected')"
-              ></v-switch>
+              />
             </v-col>
           </v-row>
           <v-row align="center">
-            <v-col v-for="(criteria, index) in searching_root" :key="criteria.toString()" class="flex-grow-0">
+            <v-col
+              v-for="(criteria, index) in searching_root"
+              :key="`${criteria.toString()}@${index}`"
+              class="flex-grow-0"
+            >
               <v-chip
-                v-if="criteria instanceof Array"
-                style="width: max-content"
+                v-if="Array.isArray(criteria)"
                 class="py-6"
                 closable
+                style="width: max-content"
                 @click:close="searching_root.splice(index, 1)"
               >
                 <v-row>
-                  <v-col v-for="(criterion, index_inner) in criteria" :key="criterion" class="flex-grow-0">
+                  <v-col
+                    v-for="(criterion, index_inner) in criteria"
+                    :key="`${criterion}@${index_inner}`"
+                    class="flex-grow-0"
+                  >
                     <v-chip
                       closable
                       @click:close="
@@ -134,28 +137,28 @@
         </v-container>
       </v-sheet>
     </template>
-    <template v-slot:default="{ items }">
+    <template #default="{ items }">
       <v-container class="pa-2" fluid>
         <v-row justify="space-around">
           <v-col
             v-for="item in items"
             :key="item.raw"
             class="flex-grow-0"
-            sm="12"
-            md="6"
             lg="4"
+            md="6"
+            sm="12"
+            style="max-width: 480px"
             xl="3"
             xxl="2"
-            style="max-width: 480px"
           >
             <ItemViewer
-              :data_id="item.raw"
-              :data="database_store.data.get(item.raw)!"
               :configuration="database_store.database_?.configurations.entry.entries!"
-              :override_image="null"
-              :update_broadcast="reload_image_notifier"
+              :data="database_store.data.get(item.raw)!"
+              :data-id="item.raw"
+              :override-image="null"
               :selection="selections.selected_items"
-              @request_modify="edit_existing_item"
+              :update-broadcast="reload_image_notifier"
+              @request-modify="edit_existing_item"
               @select="selections.selected_items.add(item.raw)"
               @unselect="selections.selected_items.delete(item.raw)"
             />
@@ -163,27 +166,27 @@
         </v-row>
       </v-container>
     </template>
-    <template v-slot:footer="{ pageCount }">
+    <template #footer="{ pageCount }">
       <v-row justify="space-around">
         <v-col cols="8">
-          <v-pagination v-model="current_page" :length="pageCount"></v-pagination>
+          <v-pagination v-model="current_page" :length="pageCount" />
         </v-col>
         <v-col cols="2">
           <v-number-input
             v-model="goto_page_number"
-            :label="$t('action.goto')"
             control-variant="hidden"
-            :min="1"
+            :label="$t('action.goto')"
             :max="pageCount"
+            :min="1"
             @keydown.enter="current_page = goto_page_number"
-          ></v-number-input>
+          />
         </v-col>
         <v-col cols="2">
           <v-select
-            :items="[10, 20, 40, 50, 100]"
             v-model="item_per_page"
+            :items="[10, 20, 40, 50, 100]"
             :label="$t('hint.item_per_page')"
-          ></v-select>
+          />
         </v-col>
       </v-row>
     </template>
@@ -191,25 +194,25 @@
   <v-overlay
     v-model="show_editor"
     class="justify-center"
-    width="85%"
-    height="100%"
-    scroll-strategy="none"
-    :persistent="true"
     content-class="py-16 overflow-x-hidden overflow-y-scroll hide-scroll-bar"
+    height="100%"
+    :persistent="true"
+    scroll-strategy="none"
+    width="85%"
   >
-    <ItemEditor :data="edit_data" :data_id="edit_data_id" @done="finish_editing" />
+    <ItemEditor :data="edit_data" :data-id="edit_data_id" @done="finish_editing" />
   </v-overlay>
   <v-overlay
     v-model="show_batched_editor"
     class="justify-center"
-    width="85%"
-    height="100%"
-    scroll-strategy="none"
-    :persistent="true"
     content-class="py-16 overflow-x-hidden overflow-y-scroll hide-scroll-bar"
+    height="100%"
+    :persistent="true"
+    scroll-strategy="none"
+    width="85%"
   >
     <BatchedTagEditor
-      :item_ids="[...selections.selected_items.keys()]"
+      :item-ids="[...selections.selected_items.keys()]"
       @close="show_batched_editor = false"
     />
   </v-overlay>
@@ -218,20 +221,23 @@
     icon="mdi-rocket-outline"
     style="position: fixed; right: 24px; bottom: 48px"
     @click="goto(0)"
-  ></v-btn>
+  />
   <v-bottom-sheet v-model="show_importer">
     <DataImporter @done="show_importer = false" />
   </v-bottom-sheet>
 </template>
 <script lang="ts" setup>
+import type { Reactive, Ref, ShallowReactive } from "vue";
+import type { DataItem } from "@/types/datasource-data";
+import type { DatasourceEntryConfiguration } from "@/types/datasource-entry-details";
+import { computed, onMounted, ref, shallowReactive } from "vue";
+import { useGoTo } from "vuetify";
 import { Sorting } from "@/definitions/sorting_types";
 import { i18n } from "@/locales";
 import { to_sorting } from "@/procedures/sorting";
+
 import { find_tag_candidates } from "@/procedures/tag-matching";
-import { dual_way_filter } from "@/procedures/utilities";
 import { useDatabaseStore } from "@/stores/database";
-import type { DataItem } from "@/types/datasource-data";
-import type { DatasourceEntryConfiguration } from "@/types/datasource-entry-details";
 import {
   AndSearchNode,
   compile_search_command,
@@ -241,10 +247,6 @@ import {
   OrSearchNode,
   to_enclosed_string,
 } from "@/types/search-node";
-
-import type { Reactive, Ref, ShallowReactive } from "vue";
-import { computed, onMounted, ref, shallowReactive } from "vue";
-import { useGoTo } from "vuetify";
 
 const { t } = i18n.global;
 
@@ -291,7 +293,7 @@ const search_input_valid = computed(() => {
     // group termination is valid if we are not at root level
     return adding_to_or_group.value;
   }
-  const effective = search_input.value.substring(search_input.value.startsWith("~") ? 1 : 0);
+  const effective = search_input.value.slice(search_input.value.startsWith("~") ? 1 : 0);
   return compile_search_command(effective) !== null;
 });
 
@@ -301,7 +303,7 @@ function insert_node(command: string) {
       searching_root.push([]);
       adding_to_or_group.value = true;
     }
-    (searching_root[searching_root.length - 1]! as string[]).push(command.substring(1));
+    (searching_root.at(-1)! as string[]).push(command.slice(1));
   } else {
     adding_to_or_group.value = false;
     searching_root.push(command);
@@ -325,15 +327,15 @@ const search_autocompletes = computed(() => {
   const extra_explanations = [
     prefix.includes("~") ? `(${t("search.in_group")})` : null,
     prefix.includes("!") ? `(${t("search.inverse")})` : null,
-  ].filter((item) => item !== null);
+  ].filter(item => item !== null);
   const content = prefix_match[2]!;
-  let tag_matched_exactly: boolean = false;
+  let tag_matched_exactly = false;
   if (content[0] === "$") {
     // we try to split the user input into three parts: the name of entry (with escaped characters unescaped),
     //  the operator and the content after the operator
     //  the result will be null if the user input seems invalid
     const entry_components = ((): [string, string, string] | null => {
-      const input = content.substring(1);
+      const input = content.slice(1);
       if (input.length === 0) {
         return ["", "", ""];
       }
@@ -349,9 +351,9 @@ const search_autocompletes = computed(() => {
           // the input is not valid
           return null;
         }
-        if (result.remainder.length !== 0) {
+        if (result.remainder.length > 0) {
           // user has finished the entry name
-          return [result.enclosed, result.remainder[0]!, result.remainder.substring(1)];
+          return [result.enclosed, result.remainder[0]!, result.remainder.slice(1)];
         }
         return [result.enclosed, "", ""];
       } else {
@@ -359,7 +361,7 @@ const search_autocompletes = computed(() => {
         if (cut_position === -1) {
           return [input, "", ""];
         }
-        return [input.substring(0, cut_position), input[cut_position]!, input.substring(cut_position + 1)];
+        return [input.slice(0, cut_position), input[cut_position]!, input.slice(cut_position + 1)];
       }
     })();
     if (entry_components !== null) {
@@ -368,12 +370,12 @@ const search_autocompletes = computed(() => {
       if (operator === "") {
         // the operator is not yet specified, we can help completing the entry name or the operator
         const exact_match = database_store.entries.find(
-          (entry_config) => entry_config.name === entry_name_prefix
+          entry_config => entry_config.name === entry_name_prefix,
         );
         if (exact_match !== undefined) {
           // the input entry name prefix matches exactly with some entry
           tag_matched_exactly = true;
-          get_available_operators(exact_match).forEach(({ operator, explanation }) => {
+          for (const { operator, explanation } of get_available_operators(exact_match)) {
             result.push({
               command: `${prefix}\$${to_enclosed_string(entry_name_prefix)}${operator}`,
               explanation: extra_explanations.concat([explanation]).join(""),
@@ -381,7 +383,7 @@ const search_autocompletes = computed(() => {
                 search_input.value = `${prefix}\$${to_enclosed_string(entry_name_prefix)}${operator}`;
               },
             });
-          });
+          }
           result.push({
             command: search_input.value,
             explanation: extra_explanations.concat([t("search.check_existence")]).join(""),
@@ -391,30 +393,28 @@ const search_autocompletes = computed(() => {
             },
           });
         }
-        database_store.entries
-          .filter(
-            (entry_config) =>
-              entry_config.name.startsWith(entry_name_prefix) && entry_config.name !== entry_name_prefix
-          )
-          .forEach((entry_config) => {
-            result.push({
-              command: `${prefix}\$${to_enclosed_string(entry_config.name)}`,
-              action: () => {
-                search_input.value = `${prefix}\$${to_enclosed_string(entry_config.name)}`;
-              },
-            });
+        for (const entry_config of database_store.entries.filter(
+          entry_config =>
+            entry_config.name.startsWith(entry_name_prefix) && entry_config.name !== entry_name_prefix,
+        )) {
+          result.push({
+            command: `${prefix}\$${to_enclosed_string(entry_config.name)}`,
+            action: () => {
+              search_input.value = `${prefix}\$${to_enclosed_string(entry_config.name)}`;
+            },
           });
+        }
       } else {
         // operator is specified, if the entry specified has tag type and the operator is exact matcher,
         //  we offer completions for possible tag contents
-        const entry_config = database_store.entries.find((entry) => entry.name === entry_name_prefix);
+        const entry_config = database_store.entries.find(entry => entry.name === entry_name_prefix);
         if (entry_config !== undefined && entry_config.type === "tag" && operator === "=") {
           // there is no other possibilities, we mark as matched exactly to skip dummy completions
           tag_matched_exactly = true;
 
           const tags = database_store.tags.get(entry_config.name) ?? [];
           const candidates = find_tag_candidates(operand, tags).map(({ display }) => display);
-          candidates.forEach((candidate) => {
+          for (const candidate of candidates) {
             const command = `${prefix}\$${to_enclosed_string(entry_config.name)}=${candidate}`;
             result.push({
               command: command,
@@ -422,12 +422,12 @@ const search_autocompletes = computed(() => {
                 search_input.value = command;
               },
             });
-          });
+          }
         }
       }
     }
   }
-  if (search_input_valid.value && content.length !== 0 && !tag_matched_exactly) {
+  if (search_input_valid.value && content.length > 0 && !tag_matched_exactly) {
     result.push({
       command: search_input.value,
       explanation:
@@ -456,17 +456,17 @@ function update_search() {
 
 const searcher = computed(() => {
   const root = new AndSearchNode();
-  searching_root.forEach((item) => {
-    if (item instanceof Array) {
+  for (const item of searching_root) {
+    if (Array.isArray(item)) {
       const group = new OrSearchNode();
-      item.forEach((command) => {
+      for (const command of item) {
         group.add_child(compile_search_command(command)!);
-      });
+      }
       root.add_child(group);
     } else {
       root.add_child(compile_search_command(item)!);
     }
-  });
+  }
   return root;
 });
 
@@ -480,22 +480,24 @@ const available_sorting_methods = computed(() => {
     name: string;
     details?: { entry: DatasourceEntryConfiguration; less_than: (lhs: any, rhs: any) => boolean };
   }[] = [{ name: t("sorting_by.none") }];
-  sortable_entries.forEach((entry) => {
-    methods.push({
-      name: `${entry.name} ${t("sorting_by.ascending")}`,
-      details: {
-        entry: entry,
-        less_than: lesser_than,
+  for (const entry of sortable_entries) {
+    methods.push(
+      {
+        name: `${entry.name} ${t("sorting_by.ascending")}`,
+        details: {
+          entry: entry,
+          less_than: lesser_than,
+        },
       },
-    });
-    methods.push({
-      name: `${entry.name} ${t("sorting_by.descending")}`,
-      details: {
-        entry: entry,
-        less_than: greater_than,
+      {
+        name: `${entry.name} ${t("sorting_by.descending")}`,
+        details: {
+          entry: entry,
+          less_than: greater_than,
+        },
       },
-    });
-  });
+    );
+  }
   return methods;
 });
 const current_sorting = ref(available_sorting_methods.value[0]!);
@@ -506,7 +508,7 @@ const sorting_ready_items = computed(() => {
   if (current_sorting.value.details === undefined) {
     return null;
   }
-  return filtered_items.value.map((value) => {
+  return filtered_items.value.map(value => {
     const data = value[1];
     const entry_data = data.entries!.get(current_sorting.value.details!.entry.name);
     if (entry_data === undefined) {
@@ -517,7 +519,7 @@ const sorting_ready_items = computed(() => {
       key: to_sorting(
         current_sorting.value.details!.entry,
         entry_data,
-        database_store.tags.get(current_sorting.value.details!.entry.name)
+        database_store.tags.get(current_sorting.value.details!.entry.name),
       ),
     };
   });
@@ -527,7 +529,7 @@ const sorted_items = computed(() => {
     return null;
   }
   return sorting_ready_items.value
-    .sort((lhs, rhs) => {
+    .toSorted((lhs, rhs) => {
       if (lhs.key === null && rhs.key === null) {
         return 0;
       }
@@ -537,10 +539,10 @@ const sorted_items = computed(() => {
       if (rhs.key === null) {
         return -1;
       }
-      const compare_result = current_sorting.value.details?.less_than(lhs.key, rhs.key)!;
+      const compare_result = current_sorting.value.details!.less_than(lhs.key, rhs.key);
       return compare_result ? -1 : 1;
     })
-    .map((item) => item.data);
+    .map(item => item.data);
 });
 
 // manage item selections
@@ -561,7 +563,9 @@ const display_items = computed(() => {
 });
 
 function change_all_selected_state(option: { selected?: boolean; inverse?: boolean }) {
-  [...display_items.value].forEach((runtime_id) => {
+  // make a copy of the item list
+  const items = [...display_items.value];
+  for (const runtime_id of items) {
     if (option.inverse) {
       if (selections.selected_items.has(runtime_id)) {
         selections.selected_items.delete(runtime_id);
@@ -573,7 +577,7 @@ function change_all_selected_state(option: { selected?: boolean; inverse?: boole
     } else {
       selections.selected_items.delete(runtime_id);
     }
-  });
+  }
 }
 
 onMounted(() => {
@@ -582,14 +586,19 @@ onMounted(() => {
     return;
   }
   // find sortable entries
-  database_store.entries.forEach((entry_config) => {
+  for (const entry_config of database_store.entries) {
     if (entry_config.sorting_method !== Sorting.Disabled) {
       sortable_entries.push(entry_config);
     }
-  });
+  }
 });
 function logout() {
   database_store.reset();
   router.replace("/");
 }
 </script>
+<style lang="css">
+.hide-scroll-bar {
+  scrollbar-width: none;
+}
+</style>

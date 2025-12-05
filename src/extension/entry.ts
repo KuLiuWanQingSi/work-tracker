@@ -7,10 +7,10 @@
 // @grant       GM.setValue
 // @grant       GM.deleteValue
 // @grant       GM_addValueChangeListener
-// @version     1.1
+// @version     1.2
 // ==/UserScript==
-import { start_configuration } from "./userscripts/configurations";
 import { InjectorConfiguration } from "./types/configuration";
+import { start_configuration } from "./userscripts/configurations";
 import { start_injector } from "./userscripts/injector";
 
 const ConfigurePageURL = "https://snake.moe/wt-injector/";
@@ -26,9 +26,14 @@ const ConfigurePageURL = "https://snake.moe/wt-injector/";
       return;
     }
     // get an instance of the injector configurations
-    const configuration = await InjectorConfiguration.from_store();
+    const load_result = await InjectorConfiguration.from_store();
+    if (load_result.is_err()) {
+      alert(String(load_result.unwrap_error()));
+      return;
+    }
+    const configuration = load_result.unwrap();
     // try to match current page
-    const host = configuration.hosts.find((host) => window.location.href.match(RegExp(host.host)) !== null);
+    const host = configuration.hosts.find(host => window.location.href.match(new RegExp(host.host)) !== null);
     if (host === undefined) {
       return;
     }

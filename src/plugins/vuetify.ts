@@ -4,23 +4,23 @@
  * Framework documentation: https://vuetifyjs.com`
  */
 
-// Styles
-import '@mdi/font/css/materialdesignicons.css'
-import 'vuetify/styles'
-import { createVueI18nAdapter } from 'vuetify/locale/adapters/vue-i18n'
-import { useI18n } from 'vue-i18n'
-import { i18n } from "@/locales"
-
+import { useI18n } from "vue-i18n";
 // Composables
-import { createVuetify } from 'vuetify'
+import { createVuetify } from "vuetify";
+import { createVueI18nAdapter } from "vuetify/locale/adapters/vue-i18n";
+import { i18n } from "@/locales";
+// Styles
+import "@mdi/font/css/materialdesignicons.css";
+
+import "vuetify/styles";
 
 // https://vuetifyjs.com/en/introduction/why-vuetify/#feature-guides
 export default createVuetify({
   theme: {
-    defaultTheme: 'system',
+    defaultTheme: "system",
   },
   // add i18n support
   locale: {
-    adapter: createVueI18nAdapter({ "i18n": i18n, "useI18n": useI18n }),
+    adapter: createVueI18nAdapter({ i18n, useI18n }),
   },
-})
+});

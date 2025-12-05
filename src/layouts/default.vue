@@ -5,25 +5,24 @@
     <v-bottom-sheet v-model="notice_configuration.shown" inset>
       <v-alert
         border="start"
+        closable
+        max-height="80vh"
         :title="notice_configuration.title"
         :type="notice_configuration.type"
         @click:close.stop="notice_configuration.shown = false"
-        closable
-        max-height="80vh"
       >
-        <template v-for="(content, index) in notice_configuration.contents" :key="content">
-          <br v-if="index !== 0" />
+        <p v-for="content in notice_configuration.contents" :key="content">
           {{ content }}
-        </template>
+        </p>
       </v-alert>
     </v-bottom-sheet>
   </v-main>
 </template>
 <script lang="ts" setup>
-import { inj_DisplayNotice, type NoticeType } from "@/types/injections";
-
 import type { Reactive } from "vue";
+
 import { provide, reactive } from "vue";
+import { inj_DisplayNotice, type NoticeType } from "@/types/injections";
 
 const notice_configuration: Reactive<{
   type: NoticeType;

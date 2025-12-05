@@ -4,15 +4,15 @@
  * Bootstraps Vuetify and other plugins then mounts the App`
  */
 
-// Components
-import ConfigurePage from "./ConfigurePage.vue";
-
 // Composables
 import { createApp } from "vue";
 
+import { createVuetify } from "vuetify";
+
+// Components
+import ConfigurePage from "./ConfigurePage.vue";
 import "@mdi/font/css/materialdesignicons.css";
 import "vuetify/styles";
-import { createVuetify } from "vuetify";
 
 const app = createApp(ConfigurePage);
 
@@ -21,7 +21,7 @@ app.use(
     theme: {
       defaultTheme: "system",
     },
-  })
+  }),
 );
 
 app.mount("#app");

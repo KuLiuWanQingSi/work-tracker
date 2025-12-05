@@ -3,50 +3,41 @@
     <v-card-text>
       <v-slider
         v-model="maximum_score"
-        :min="2"
-        :max="10"
-        :step="1"
-        :label="$t('datasource_creation.rating_maximum')"
         color="primary"
         hide-details
+        :label="$t('datasource_creation.rating_maximum')"
+        :max="10"
+        :min="2"
+        :step="1"
       >
-        <template v-slot:append>
-          <v-text-field
-            v-model="maximum_score"
-            density="compact"
-            type="number"
-            style="width: 80px"
-          ></v-text-field>
+        <template #append>
+          <v-text-field v-model="maximum_score" density="compact" style="width: 80px" type="number" />
         </template>
       </v-slider>
-      <v-switch
-        v-model="use_hints"
-        color="primary"
-        :label="$t('datasource_creation.rating_use_hint')"
-      ></v-switch>
+      <v-switch v-model="use_hints" color="primary" :label="$t('datasource_creation.rating_use_hint')" />
       <v-container v-if="use_hints">
         <v-text-field
           v-for="(_, index) in hints"
           :key="index"
           v-model="hints[index]"
-          :label="(index + 1).toString()"
-          density="comfortable"
           clearable
-        ></v-text-field>
-        <hoverable-rating :configuration="configuration"></hoverable-rating>
+          density="comfortable"
+          :label="(index + 1).toString()"
+        />
+        <hoverable-rating :configuration="configuration" />
       </v-container>
     </v-card-text>
   </v-card>
 </template>
 <script setup lang="ts">
-import { Sorting } from "@/definitions/sorting_types";
+import type { ComputedRef, Ref } from "vue";
 import type {
   DatasourceEntryDetailsAPI,
   DatasourceEntryRatingExtraConfiguration,
 } from "@/types/datasource-entry-details";
 
-import type { ComputedRef, Ref } from "vue";
 import { computed, ref, watch } from "vue";
+import { Sorting } from "@/definitions/sorting_types";
 
 // maximum score
 const maximum_score: Ref<number> = ref(5);
@@ -54,7 +45,7 @@ const maximum_score: Ref<number> = ref(5);
 const use_hints: Ref<boolean> = ref(false);
 
 // hints for each rating level
-const hints: Ref<string[]> = ref(new Array(maximum_score.value).fill(""));
+const hints: Ref<string[]> = ref(Array.from<string>({ length: maximum_score.value }).fill(""));
 // update hint array if maximum score is changed
 watch(maximum_score, (new_score, old_score) => {
   if (typeof new_score === "string") {
@@ -65,7 +56,7 @@ watch(maximum_score, (new_score, old_score) => {
     return;
   }
   if (new_score > old_score) {
-    hints.value.splice(old_score, 0, ...new Array(new_score - old_score).fill(""));
+    hints.value.splice(old_score, 0, ...Array.from<string>({ length: new_score - old_score }).fill(""));
   } else {
     hints.value.splice(new_score);
   }
