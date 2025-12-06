@@ -52,18 +52,27 @@ export class InjectorDatabases {
         "The URL must end with '/data.json' since it refers to the main database file.",
       );
     }
-    const database_response = await fetch(parsed_url);
-    const raw_database = await database_response.text();
-    const wrapped_encrypted_database = ((): Result<EncryptedDatasource> => {
+    const raw_database = await (async (): Promise<Result<string>> => {
       try {
-        return Result.ok(load_datasource_phase1(raw_database));
+        const database_response = await fetch(parsed_url);
+        return Result.ok(await database_response.text());
       } catch (error) {
         return Result.error(
-          "Cannot parse the database",
-          `This is likely caused by an incorrect URL which points to something that is not actually a database, or the database has been corrupted.\nOriginal error: ${String(error)}`,
+          "Cannot fetch the database",
+          `This is likely an network error, try again later?\nThe original error is ${error}`,
         );
       }
     })();
+    const wrapped_encrypted_database = raw_database.map((raw): Result<EncryptedDatasource> => {
+      try {
+        return Result.ok(load_datasource_phase1(raw));
+      } catch (error) {
+        return Result.error(
+          "Cannot parse the database",
+          `This is likely caused by an incorrect URL which points to something that is not actually a database, or the database has been corrupted.\nOriginal error: ${error}`,
+        );
+      }
+    });
     if (wrapped_encrypted_database.is_err()) {
       return wrapped_encrypted_database.erase_type();
     }
@@ -74,7 +83,10 @@ export class InjectorDatabases {
         : credential;
     try {
       await load_datasource_phase2(encrypted_database, raw_key, () => null);
-      return Result.ok({ database: raw_database, fixed_url: parsed_url, key: raw_key });
+      // we can unwrap here since raw_database has been mapped to wrapped_encrypted_database which has been
+      //  checked. Execution of this function should have been terminated if wrapped_encrypted_database was
+      //  in failed state.
+      return Result.ok({ database: raw_database.unwrap(), fixed_url: parsed_url, key: raw_key });
     } catch (error) {
       return Result.error(
         "Cannot open the database",
