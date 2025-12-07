@@ -1,0 +1,29 @@
+This is where i18n, or more specifically and accurately, multi-language support is implemented.
+
+## Directory structure
+
+Translatable strings for each language is placed in subdirectory `translations/`, each as a separate file. Currently, we try to align name of these files with how languages are referred to in vuetify, as listed on [this page](https://vuetifyjs.com/en/features/internationalization/#supported-languages), therefore we have Simplified Chinese in zhHans.ts. `index.ts` implements several functions used to switch display language, which should just work without further modification when trying to add support for more languages.
+
+## Related Resources
+
+We utilize `vue-i18n` to provide most features used in multi-language support. This is a fairly simple library, check [its documentation](https://vue-i18n.intlify.dev/guide/essentials/started.html) if you are not yet familiar with it.
+
+## Principles
+
+### English as the default language
+
+If the one detected from `navigator.language` is not recognized or supported, English is also the language to fallback into. Therefore, each translatable string must be listed in this file and with a proper displayed string attached.
+
+### String in main applications should be translatable
+
+**ALL hardcoded strings in the main application that are intended for the users must be translatable.** This includes any messages displayed to the user, be it alerts, labels, hints or anything else. Strings logged to the console and internal values like mapping keys can be untranslated. Any string in files under `src/extension` must not be included into this directory since they are built separately. They do not have to be translated anyway since they are intended to power users who are ready to program some plugins for themselves, English should be enough.
+
+## Checklists
+
+### Add support for a new language
+
+1. Decide the filename. Check [this page](https://vuetifyjs.com/en/features/internationalization/#supported-languages) to pick the one desired. If it is not listed, check the [Language Subtag Registry](https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry) for one.
+2. Create `<name>.ts` under `translations/` and initialize it with `en.ts` as a reference. Do not forget to include translations for vuetify, which is done at the very beginning of `en.ts`. You may also checkout the [official documentation](https://vuetifyjs.com/en/features/internationalization/#vue-i18n)
+3. Add this newly supported language into `index.ts` by adding a new entry in SUPPORT_LOCALES. The key should be your filename without the extension, and the value should be the display name.
+4. Check the value your browser reports when you ask with `navigator.language.toLowerCase()` while the display language of your browser is set to the newly supported language. If it does match the filename you picked, add a new entry in `PredefinedMapping` in function `_get_user_locale` that maps from the reported value to the filename.
+5. This should be sufficient to include a new language. You should be able to see the new language in the language selector now. Happy translating!
