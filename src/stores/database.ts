@@ -19,9 +19,15 @@ import {
 import { make_database_pack } from "@/procedures/packing-utils";
 import { save_to_local } from "@/procedures/save-to-local";
 
-import { attempts_to } from "@/procedures/utilities";
+import { attempts_to, dual_way_filter } from "@/procedures/utilities";
 import { type ImageFormatSpecification, ImageImageFormat, ThumbnailImageFormat } from "@/types/image-types";
-import { type InvalidDuplicatedValue, type ItemInvalidReason, ItemInvalidType } from "@/types/invalid-items";
+import {
+  type InvalidDuplicatedValue,
+  type InvalidImageFetch,
+  type ItemInvalidReason,
+  ItemInvalidType,
+} from "@/types/invalid-items";
+import { Result } from "@/types/result";
 
 const { t } = i18n.global;
 
@@ -161,32 +167,30 @@ export const useDatabaseStore = defineStore("database", () => {
   //  the image format need to be specified, which is required to decrypt the image
   //   inferring the format with its name (say through its extension) is possible, but which ties the filename
   //   with the format it is in. This is some extra restrictions that we would like to avoid
-  //  in case that the image cannot be loaded, null is returned
-  async function prepare_image(name: string, format: ImageFormatSpecification): Promise<Blob | null> {
+  async function prepare_image(name: string, format: ImageFormatSpecification): Promise<Result<Blob>> {
     const image_loader = database_.value!.runtime.images!.loader!;
-    const encrypted_image = await image_loader(name);
-    if (encrypted_image === null) {
-      return null;
-    }
-    const image = await open_image(encrypted_image, format, database_.value!.runtime.protection.key);
-    return image;
+    const load_result = await image_loader(name);
+    const image = await load_result
+      .map(async encrypted => await open_image(encrypted, format, database_.value!.runtime.protection.key))
+      .shift_promise();
+    return image.flatten();
   }
 
   // get a thumbnail pool using the filename stem (NO extension!)
-  async function get_thumbnail_pool(name: string): Promise<ImageBitmap | null> {
+  async function get_thumbnail_pool(name: string): Promise<Result<ImageBitmap>> {
     const cached = internal_states.loaded_thumbnail_pools.get(name);
     if (cached !== undefined) {
-      return cached;
+      return Result.ok(cached);
     }
     const raw_pool = await prepare_image(`${name}${ThumbnailImageFormat.extension}`, ThumbnailImageFormat);
-    if (raw_pool === null) {
-      return null;
+    if (raw_pool.is_err()) {
+      return raw_pool.erase_type();
     }
     // convert into ImageBitmap
-    const pool = await window.createImageBitmap(raw_pool);
+    const pool = await window.createImageBitmap(raw_pool.unwrap());
     // place into cache
     internal_states.loaded_thumbnail_pools.set(name, pool);
-    return pool;
+    return Result.ok(pool);
   }
 
   // place loaded image into image caches
@@ -221,52 +225,56 @@ export const useDatabaseStore = defineStore("database", () => {
   }
 
   // get thumbnail for an item, load it if it is not loaded yet
-  async function get_thumbnail(runtime_id: string): Promise<string> {
+  async function get_thumbnail(runtime_id: string): Promise<Result<string>> {
     // check if it has been cropped
     const cached = internal_states.thumbnails.get(runtime_id);
     if (cached !== undefined) {
-      return cached;
+      return Result.ok(cached);
     }
     // to load and crop the thumbnail, we need the data item
     const data_item = data.value.get(runtime_id);
     if (data_item === undefined) {
-      // FIXME: should this be reported as an error, since in no case shall thumbnail be fetched
-      //  for an item that does not exist?
-      return "";
+      return Result.error(
+        t("message.error.fetching_thumbnail_for_unknown_item"),
+        t("message.error.fetching_thumbnail_for_unknown_item_detail", { id: runtime_id }),
+      );
     }
     // get the corresponding thumbnail pool first
     const thumbnail_pool = await get_thumbnail_pool(data_item.image!.name);
-    if (thumbnail_pool === null) {
-      return "";
+    if (thumbnail_pool.is_err()) {
+      return thumbnail_pool.erase_type();
     }
     // crop the thumbnail out from the pool
-    const url = await crop_image(thumbnail_pool, data_item.image!.index, to_thumbnail_size(image_size.value));
-    if (url === null) {
-      return "";
+    const url = await crop_image(
+      thumbnail_pool.unwrap(),
+      data_item.image!.index,
+      to_thumbnail_size(image_size.value),
+    );
+    if (url.is_ok()) {
+      // place into the cache and return
+      place_image_cache(runtime_id, { thumbnail: url.unwrap() });
     }
-    // place into the cache and return
-    place_image_cache(runtime_id, { thumbnail: url });
     return url;
   }
 
   // load full image for a data item, getting its Blob URL which can be used to display it
   //  This function returns an empty string in case the image file does not exist
-  async function get_image(runtime_id: string): Promise<string> {
+  async function get_image(runtime_id: string): Promise<Result<string>> {
     // check for cache first
     const cached = get_cached_image(runtime_id);
     if (cached !== undefined) {
-      return cached;
+      return Result.ok(cached);
     }
     // if the cache missed, load it
     const image = await prepare_image(`${runtime_id}${ImageImageFormat.extension}`, ImageImageFormat);
-    if (image === null) {
-      return "";
+    if (image.is_err()) {
+      return image.erase_type();
     }
     // create a URL for the image
-    const url = URL.createObjectURL(image);
+    const url = URL.createObjectURL(image.unwrap());
     // update the cache
     place_image_cache(runtime_id, { image: url });
-    return url;
+    return Result.ok(url);
   }
 
   // get a free slot to store image
@@ -334,7 +342,7 @@ export const useDatabaseStore = defineStore("database", () => {
       name: string;
       index: number;
     },
-  ) {
+  ): Promise<Result<{ name: string; index: number }>> {
     // find the target slot to place image in
     //  if we are replacing, get the slot used to store image for this item
     //  otherwise, allocate a new slot
@@ -342,12 +350,12 @@ export const useDatabaseStore = defineStore("database", () => {
 
     // we ensure the thumbnail pool to place thumbnail in is loaded to memory and get its current value
     const thumbnail_pool = await get_thumbnail_pool(slot.name);
-    if (thumbnail_pool === null) {
-      throw Error;
+    if (thumbnail_pool.is_err()) {
+      return thumbnail_pool.erase_type();
     }
     // place the new thumbnail into the thumbnail pool
     const modified_thumbnail_pool = await place_image(
-      thumbnail_pool,
+      thumbnail_pool.unwrap(),
       slot.index,
       thumbnail,
       to_thumbnail_size(image_size.value),
@@ -356,7 +364,7 @@ export const useDatabaseStore = defineStore("database", () => {
     internal_states.loaded_thumbnail_pools.set(slot.name, modified_thumbnail_pool);
     // update modified list
     internal_states.modified_images.value.add(slot.name);
-    return slot;
+    return Result.ok(slot);
   }
 
   // acquire a new unique runtime id for data item
@@ -581,10 +589,10 @@ export const useDatabaseStore = defineStore("database", () => {
       }
 
       if (failures.length > 0) {
-        // terminate
+        // early terminate if some error has been detected
         break;
       }
-      // all data validated, we can now update the database
+
       // to minimize modification to database, we compare the data and only mark the database as modified when
       //  a modification was actually made
       const modified_items = items
@@ -598,6 +606,38 @@ export const useDatabaseStore = defineStore("database", () => {
             compare_data_item(data.value.get(runtime_id), source) ||
             (has_image.value && images !== undefined),
         );
+
+      // up to this time point, all data are validated but failures are still possible
+      //  one of the situations could be that network error may occur when trying to fetch a thumbnail pool
+      //  we perform these operations first so that should any failure occur, the procedure terminates
+      //  properly without any visible state modified.
+      if (has_image.value) {
+        for (const [index, { source, images }] of modified_items.entries()) {
+          // skip if the image is not updated
+          if (images === undefined) {
+            continue;
+          }
+          // skip if a new thumbnail pool will be allocated since allocating new pools is not supposed to fail
+          if (source.image === undefined) {
+            continue;
+          }
+          const fetch_result = await get_thumbnail_pool(source.image.name);
+          if (fetch_result.is_err()) {
+            const error: InvalidImageFetch = {
+              type: ItemInvalidType.image_fetch,
+              description: String(fetch_result.unwrap_error()),
+            };
+            failures.push({ index, reason: error });
+          }
+        }
+      }
+
+      if (failures.length > 0) {
+        // early terminate if some error has been detected
+        break;
+      }
+
+      // now, no following operation is supposed to fail
       if (modified_items.length > 0) {
         internal_states.data_modified.value = true;
       }
@@ -610,7 +650,7 @@ export const useDatabaseStore = defineStore("database", () => {
             continue;
           }
           const slot = await update_item_thumbnail(images.thumbnail, source.image);
-          source.image = slot;
+          source.image = slot.unwrap();
           place_image_cache(runtime_id, { image: images.image_url, thumbnail: images.thumbnail_url });
           // we have (re)placed the full image for this item, update list of modified image
           internal_states.modified_images.value.add(runtime_id);
@@ -668,7 +708,7 @@ export const useDatabaseStore = defineStore("database", () => {
   //  take an array about extra image batches to save
   //  note that since we will maintain a counter for times the key has been used to encrypt,
   //   main data file will always have to be modified and saved
-  async function save_internal(images: string[], pack_name: string) {
+  async function save_internal(images: string[], pack_name: string): Promise<Result<void>> {
     // how many messages will the data key be used to encrypt doing this save?
     //  there will be one message for each image specified in images, and on extra message for the main data
     const messages_to_encrypt = images.length + 1;
@@ -677,7 +717,7 @@ export const useDatabaseStore = defineStore("database", () => {
       // it will, so we redirect the user to regenerate a data key
       encrypts_to_be_done.value = messages_to_encrypt;
       router.push("/Maintenance");
-      return;
+      return Result.ok(undefined);
     }
     // select data key to encrypt data
     //  use the new data key if one is regenerated
@@ -687,44 +727,60 @@ export const useDatabaseStore = defineStore("database", () => {
       database_.value!.configurations.global.name,
     );
     const results = await attempts_to(
-      images.map(image_name => async (): Promise<void> => {
+      images.map(image_name => async (): Promise<Result<void>> => {
         // the name can either refers to a thumbnail pool or to a full image, we need to check this
         if (image_pools.has(image_name)) {
           // it must be a thumbnail pool if the name can be found associated with an allocation bitmap
           const pool = await get_thumbnail_pool(image_name);
-          if (pool === null) {
-            throw new Error(t("message.error.cannot_find_image", { name: image_name }));
+          if (pool.is_err()) {
+            return pool.erase_type();
           }
           add_from_blob(
             `${image_name}${ThumbnailImageFormat.extension}`,
             await encrypt_image(
-              await encode_image(pool, ThumbnailImageFormat),
+              await encode_image(pool.unwrap(), ThumbnailImageFormat),
               ThumbnailImageFormat,
               encryption_key,
             ),
           );
+          return Result.ok(undefined);
         } else {
           // otherwise, it must be a full image
           const image_url = await get_image(image_name);
-          if (image_url === "") {
-            throw new Error(t("message.error.cannot_find_image", { name: image_name }));
+          if (image_url.is_err()) {
+            return image_url.erase_type();
           }
-          const image = await (await fetch(image_url)).blob();
+          const image = await (await fetch(image_url.unwrap())).blob();
           add_from_blob(
             `${image_name}${ImageImageFormat.extension}`,
             await encrypt_image(image, ImageImageFormat, encryption_key),
           );
+          return Result.ok(undefined);
         }
       }),
     );
     // check if all image are loaded successfully
-    const failed_loads = results.filter(result => !result.succeed);
+    const [load_results, failed_loads] = dual_way_filter(results, result => result.succeed);
     if (failed_loads.length > 0) {
-      const message =
-        t("message.error.failed_to_fetch_all_images") +
-        "\n" +
-        failed_loads.map(({ reason }) => String(reason)).join("\n");
-      throw new Error(message);
+      return Result.error(
+        t("message.error.fallback_failed_to_fetch_all_images"),
+        failed_loads.map(item => (item.succeed ? "" : String(item.reason))).join("\n"),
+      );
+    }
+    const errors_from_results = load_results
+      .map(item => {
+        if (item.succeed) {
+          if (item.result.is_err()) {
+            return String(item.result.unwrap_error());
+          }
+          return null;
+        } else {
+          return null;
+        }
+      })
+      .filter(item => item !== null);
+    if (errors_from_results.length > 0) {
+      return Result.error(t("message.error.failed_to_fetch_all_images"), errors_from_results.join("\n"));
     }
 
     // build new database, encrypt it and add to the package
@@ -747,14 +803,15 @@ export const useDatabaseStore = defineStore("database", () => {
     // we can now safely modify state of the local database
     internal_states.data_modified.value = true;
     database_.value!.protection.encrypted_counter += messages_to_encrypt;
+    return Result.ok(undefined);
   }
 
   // save only modified files
-  async function save_delta() {
+  async function save_delta(): Promise<Result<void>> {
     return save_internal([...internal_states.modified_images.value.keys()], "database-delta.zip");
   }
   // save entire database
-  async function save_all() {
+  async function save_all(): Promise<Result<void>> {
     if (has_image.value) {
       return save_internal([...image_pools.keys(), ...data.value.keys()], "database.zip");
     }

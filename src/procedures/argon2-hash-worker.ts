@@ -9,18 +9,9 @@ export type Argon2HashWorkerParameters = {
   hash_length: number;
 };
 
-type Argon2HashWorkerSucceedResult = {
-  succeed: true;
-  result: Uint8Array;
-};
-
-type Argon2HashWorkerFailedResult = {
-  succeed: false;
-  error_code: number;
-  error_message: string;
-};
-
-export type Argon2HashWorkerResult = Argon2HashWorkerSucceedResult | Argon2HashWorkerFailedResult;
+export type Argon2HashWorkerResult =
+  | { succeed: true; hash: Uint8Array }
+  | { succeed: false; message: string };
 
 self.addEventListener("message", event => {
   const parameters: Argon2HashWorkerParameters = event.data;
@@ -35,9 +26,10 @@ self.addEventListener("message", event => {
   };
   argon2(converted_parameters)
     .then(result => {
-      self.postMessage({ succeed: true, result: result.hash });
+      self.postMessage({ succeed: true, hash: result.hash });
     })
     .catch(error => {
-      self.postMessage({ succeed: false, error_code: error.code, error_message: error.message });
+      const message = error.code === undefined ? `${error}` : `${error.code}: ${error.message}`;
+      self.postMessage({ succeed: false, message });
     });
 });

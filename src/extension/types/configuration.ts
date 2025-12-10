@@ -65,7 +65,7 @@ export class InjectorDatabases {
     })();
     const wrapped_encrypted_database = raw_database.map((raw): Result<EncryptedDatasource> => {
       try {
-        return Result.ok(load_datasource_phase1(raw));
+        return load_datasource_phase1(raw);
       } catch (error) {
         return Result.error(
           "Cannot parse the database",
@@ -77,12 +77,21 @@ export class InjectorDatabases {
       return wrapped_encrypted_database.erase_type();
     }
     const encrypted_database = wrapped_encrypted_database.unwrap();
-    const raw_key =
-      typeof credential === "string"
-        ? (await get_key_from_password(credential, encrypted_database.protection.argon2)).raw_key
-        : credential;
+    const raw_key_result = await (async (): Promise<Result<Uint8Array>> => {
+      if (typeof credential === "string") {
+        const kdf_result = await get_key_from_password(credential, encrypted_database.protection.argon2);
+        return kdf_result.map(({ raw_key }) => raw_key);
+      }
+      return Result.ok(credential);
+    })();
+    if (raw_key_result.is_err()) {
+      return raw_key_result.erase_type();
+    }
+    const raw_key = raw_key_result.unwrap();
     try {
-      await load_datasource_phase2(encrypted_database, raw_key, () => null);
+      await load_datasource_phase2(encrypted_database, raw_key, async () =>
+        Result.error("The image loader is not expected to be called from injector"),
+      );
       // we can unwrap here since raw_database has been mapped to wrapped_encrypted_database which has been
       //  checked. Execution of this function should have been terminated if wrapped_encrypted_database was
       //  in failed state.
@@ -126,42 +135,54 @@ export class InjectorDatabases {
   }
 
   // decrypt the cached database and transform it into easily parsable format for user scripts
-  async get_content() {
-    const raw_database = await load_datasource_phase2(
-      load_datasource_phase1(this.cached_database),
-      this.key,
-      () => null,
+  async get_content(): Promise<Result<any[]>> {
+    const phase1_result = load_datasource_phase1(this.cached_database);
+    const raw_database_result = (
+      await phase1_result
+        .map(
+          async encrypted =>
+            await load_datasource_phase2(encrypted, this.key, async () =>
+              Result.error("The image loader is not expected to be called from injector"),
+            ),
+        )
+        .shift_promise()
+    ).flatten();
+    if (raw_database_result.is_err()) {
+      return raw_database_result.erase_type();
+    }
+    const raw_database = raw_database_result.unwrap();
+    return Result.ok(
+      [...raw_database.data.values()].map((item): any => {
+        if (item.entries === undefined) {
+          // currently, databases whose items have no entries configured is not supported
+          return [];
+        }
+        return Object.fromEntries(
+          raw_database.configurations.entry.entries
+            .map((entry_config): [string, any] | null => {
+              const data = item.entries?.get(entry_config.name);
+              if (data === undefined) {
+                return null;
+              }
+              const value = (() => {
+                if (entry_config.type === "string") {
+                  return (data as StringEntryData).value;
+                }
+                if (entry_config.type === "rating") {
+                  const rating = data as RatingEntryData;
+                  return { score: rating.score, comment: rating.comment };
+                }
+                if (entry_config.type === "tag") {
+                  const tag_list = raw_database.tags!.get(entry_config.name)!;
+                  return (data as TagEntryData).tags.map(index => tag_list[index]!);
+                }
+              })();
+              return [entry_config.name, value];
+            })
+            .filter(item => item !== null),
+        );
+      }),
     );
-    return [...raw_database.data.values()].map((item): any => {
-      if (item.entries === undefined) {
-        // currently, databases whose items have no entries configured is not supported
-        return [];
-      }
-      return Object.fromEntries(
-        raw_database.configurations.entry.entries
-          .map((entry_config): [string, any] | null => {
-            const data = item.entries?.get(entry_config.name);
-            if (data === undefined) {
-              return null;
-            }
-            const value = (() => {
-              if (entry_config.type === "string") {
-                return (data as StringEntryData).value;
-              }
-              if (entry_config.type === "rating") {
-                const rating = data as RatingEntryData;
-                return { score: rating.score, comment: rating.comment };
-              }
-              if (entry_config.type === "tag") {
-                const tag_list = raw_database.tags!.get(entry_config.name)!;
-                return (data as TagEntryData).tags.map(index => tag_list[index]!);
-              }
-            })();
-            return [entry_config.name, value];
-          })
-          .filter(item => item !== null),
-      );
-    });
   }
 
   toJSON(): string {

@@ -62,10 +62,11 @@ import type { ImageLoader } from "@/types/datasource-images";
 import { inject, ref } from "vue";
 import { i18n } from "@/locales";
 import { load_datasource_phase1, load_datasource_phase2 } from "@/procedures/crypto-readonly";
-import { error_reporter } from "@/procedures/utilities";
+import { error_reporter, result_error_reporter } from "@/procedures/utilities";
 
 import { useDatabaseStore } from "@/stores/database";
 import { inj_DisplayNotice } from "@/types/injections";
+import { Result } from "@/types/result";
 
 const { t } = i18n.global;
 const display_notice = inject(inj_DisplayNotice)!;
@@ -81,16 +82,25 @@ const local_files: Ref<File[]> = ref([]);
 // variable to collect the url
 const url: Ref<string> = ref("");
 
-function open_database_phase2(encrypted_database: EncryptedDatasource, image_loader: ImageLoader) {
+function open_database_phase2(encrypted_database: Result<EncryptedDatasource>, image_loader: ImageLoader) {
   loading.value = true;
-  error_reporter(
-    load_datasource_phase2(encrypted_database, password.value, image_loader).then(database => {
-      database_store.build_runtime_database(database);
-      router.push("/Main");
-    }),
-    t("message.error.failed_opening_database"),
-    display_notice,
-  ).then(() => {
+  const task = (async (): Promise<Result<void>> => {
+    if (encrypted_database.is_err()) {
+      return encrypted_database.erase_type();
+    }
+    const load_result = await load_datasource_phase2(
+      encrypted_database.unwrap(),
+      password.value,
+      image_loader,
+    );
+    if (load_result.is_err()) {
+      return load_result.erase_type();
+    }
+    database_store.build_runtime_database(load_result.unwrap());
+    router.push("/Main");
+    return Result.ok(undefined);
+  })();
+  result_error_reporter(task, t("message.error.failed_opening_database"), display_notice).finally(() => {
     loading.value = false;
   });
 }
@@ -125,20 +135,30 @@ function load_from_remote_url() {
       }
       const database_source = await response.text();
       phase2_function.value = () => {
-        open_database_phase2(load_datasource_phase1(database_source), (name: string) => {
-          const target_url = URL.parse(name, base_url);
-          if (target_url === null) {
-            return null;
-          }
-          return new Promise((resolve, _) => {
-            const request = fetch(target_url);
-            request.then(response => {
-              response.blob().then(result => {
-                resolve(result);
-              });
-            });
-          });
-        });
+        open_database_phase2(
+          load_datasource_phase1(database_source),
+          async (name: string) => {
+            const target_url = URL.parse(name, base_url);
+            if (target_url === null) {
+              return Result.error(t("message.error.invalid_url"));
+            }
+            try {
+              const response = await fetch(target_url);
+              if (!response.ok) {
+                return Result.error(
+                  t("message.error.failed_to_fetch_data", { source: target_url.href }),
+                  response.statusText,
+                );
+              }
+              return Result.ok(await response.blob());
+            } catch (error) {
+              return Result.error(
+                t("message.error.failed_to_fetch_data", { source: target_url.href }),
+                String(error),
+              );
+            }
+          },
+        );
       };
       ask_password.value = true;
     })(),
@@ -172,14 +192,12 @@ function load_from_local_directory(input_file: File | File[] | undefined) {
       }
       const database_source = await database_file.text();
       phase2_function.value = () => {
-        open_database_phase2(load_datasource_phase1(database_source), (name: string) => {
+        open_database_phase2(load_datasource_phase1(database_source), async (name: string) => {
           const file = file_lookup_table.get(name);
           if (file === undefined) {
-            return null;
+            return Result.error(t("message.error.file_does_not_exist", { filename: name }));
           }
-          return new Promise((resolve, _) => {
-            resolve(file);
-          });
+          return Result.ok(file);
         });
       };
       loading.value = false;

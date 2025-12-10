@@ -95,14 +95,17 @@ function update_header_image() {
   }
   // full image is not loaded, we need to get the thumbnail
   database_store.get_thumbnail(props.dataId).then(image => {
-    fetched_image.value = image;
+    image.map(value => fetched_image.value = value);
+    ;
   });
   // set full image fetcher
   load_full_image.value = () => {
-    // the fetcher should be called only once
-    load_full_image.value = undefined;
     database_store.get_image(props.dataId).then(image => {
-      fetched_image.value = image;
+      image.map(value => {
+        // the fetcher should be called only once
+        load_full_image.value = undefined;
+        fetched_image.value = value;
+      });
     });
   };
 }

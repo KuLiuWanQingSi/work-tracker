@@ -1,5 +1,6 @@
 import type { LoadedImage } from "./item-migrant";
 import { ImageFormat, type ImageFormatSpecification } from "@/types/image-types";
+import { Result } from "@/types/result";
 
 const ImagePerRow = 8;
 const ImageRows = 8;
@@ -36,11 +37,11 @@ export async function crop_image(
   image: Blob | ImageBitmap,
   index: number,
   image_size: { height: number; width: number },
-): Promise<string | null> {
+): Promise<Result<string>> {
   const canvas = new OffscreenCanvas(image_size.width, image_size.height);
   const context = canvas.getContext("2d");
   if (context === null) {
-    return null;
+    return Result.error("Failed to acquire content from canvas");
   }
   const { sx, sy } = get_offset(index, image_size);
   if (image instanceof Blob) {
@@ -62,7 +63,7 @@ export async function crop_image(
     );
   }
   const blob = await canvas.convertToBlob({ type: DefaultImageType });
-  return URL.createObjectURL(blob);
+  return Result.ok(URL.createObjectURL(blob));
 }
 
 // load image from a Blob, resizing it into the shape of full item image and its thumbnail

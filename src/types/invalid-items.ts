@@ -7,6 +7,7 @@ export enum ItemInvalidType {
   formatting,
   duplicated_value,
   exclusive,
+  image_fetch,
 }
 interface InvalidBase {
   key?: string; // the name of entry corresponding to this error, the image if undefined
@@ -25,7 +26,16 @@ export interface InvalidDuplicatedValue extends InvalidBase {
 export interface InvalidExclusive extends InvalidBase {
   type: ItemInvalidType.exclusive;
 }
-export type ItemInvalidReason = InvalidMissing | InvalidFormatting | InvalidDuplicatedValue | InvalidExclusive;
+export interface InvalidImageFetch extends InvalidBase {
+  type: ItemInvalidType.image_fetch;
+  description: string;
+}
+export type ItemInvalidReason =
+  | InvalidMissing
+  | InvalidFormatting
+  | InvalidDuplicatedValue
+  | InvalidExclusive
+  | InvalidImageFetch;
 const { t } = i18n.global;
 export function explain_invalid_reason(reason: ItemInvalidReason): string {
   switch (reason.type) {
@@ -45,6 +55,9 @@ export function explain_invalid_reason(reason: ItemInvalidReason): string {
         reason.key!,
         t(`sorting.${reason.expected_format}.name`),
       ]);
+    }
+    case ItemInvalidType.image_fetch: {
+      return reason.description;
     }
     default: {
       return "";

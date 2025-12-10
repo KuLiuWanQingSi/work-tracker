@@ -221,7 +221,7 @@ onMounted(() => {
     // prepare image
     if (database_store.has_image) {
       database_store.get_image(props.dataId).then(image => {
-        override_image.value = image ?? "";
+        image.map(value => override_image.value = value);
       });
     }
   }

@@ -6,7 +6,11 @@ export const message = {
   },
   message: {
     error: {
+      error_fallback:
+        "This is a fallback report where an Error is thrown instead of being wrapped by Result<T>. Please file an issue if you would like to.",
       failed_to_argon2: "Argon2 returned an error.",
+      failed_to_argon2_hint:
+        "This is usually caused large memory usage, you can try to open the panel '{panel_name}' and reduce value in '{field_name}'. Note that decreasing the value harms security: you are suggested set the value above 64MiB. If the problem continues, it might be your browser setting a really tight memory limitation and you can search for solutions on the Internet.",
       failed_to_config_entries: "Entries at following indices are invalid.",
       duplicated_entries_defined: "Some entries share the same name.",
       failed_to_parse_imported_data: "Cannot parse imported data.",
@@ -15,15 +19,21 @@ export const message = {
       failed_to_fetch_data: "Failed to fetch data from {source}",
       cannot_commit_modification: "Modification cannot be done due to following reasons:",
       failed_to_fetch_all_images: "Failed to load following images:",
+      fallback_failed_to_fetch_all_images:
+        "@:message.error.error_fallback @:message.error.failed_to_fetch_all_images",
       cannot_find_image: "Cannot find image with name {name}",
       unexpected_image_name: "Unexpected image name {name} encountered",
       failure_report: "Failed to {task} due to following errors:",
+      fallback_failure_report: "@:message.error.error_fallback @:message.error.failure_report",
       entry_contains_error: "Following errors are detected for this entry:",
       missing_required_entry: "Required entry {0} not specified",
       no_main_data_file: "Picked directory does not include the main data file data.json",
       failed_loading_database: "Failed to load the database",
       failed_opening_database:
         "Failed to open the database, likely due to corrupted data file or incorrect password",
+      file_does_not_exist: "Trying to open file {filename} which does not exist",
+      fetching_thumbnail_for_unknown_item: "Trying to fetch thumbnail for an unknown item.",
+      fetching_thumbnail_for_unknown_item_detail: "The item id was {id}. This is likely a BUG.",
     },
     item_invalid_reason: {
       missing_entry: "missing required entry: {0}",

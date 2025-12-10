@@ -3,11 +3,18 @@
     <v-app-bar-title>
       {{ database_store.database_?.configurations.global.name ?? "" }}
     </v-app-bar-title>
-    <v-btn v-if="database_store.database_modified" icon @click="database_store.save_delta">
+    <v-btn
+      v-if="database_store.database_modified"
+      icon
+      @click="result_error_reporter(database_store.save_delta(), $t('action.download_delta'), display_notice)"
+    >
       <v-icon color="warning">mdi-download-outline</v-icon>
       <v-tooltip activator="parent" location="bottom">{{ $t("action.download_delta") }}</v-tooltip>
     </v-btn>
-    <v-btn icon @click="database_store.save_all">
+    <v-btn
+      icon
+      @click="result_error_reporter(database_store.save_all(), $t('action.download_delta'), display_notice)"
+    >
       <v-icon :color="database_store.database_modified ? 'warning' : ''">
         mdi-download-multiple-outline
       </v-icon>
@@ -230,14 +237,15 @@
 import type { Reactive, Ref, ShallowReactive } from "vue";
 import type { DataItem } from "@/types/datasource-data";
 import type { DatasourceEntryConfiguration } from "@/types/datasource-entry-details";
-import { computed, onMounted, ref, shallowReactive } from "vue";
+import { computed, inject, onMounted, ref, shallowReactive } from "vue";
 import { useGoTo } from "vuetify";
 import { Sorting } from "@/definitions/sorting_types";
 import { i18n } from "@/locales";
 import { to_sorting } from "@/procedures/sorting";
-
 import { find_tag_candidates } from "@/procedures/tag-matching";
+import { result_error_reporter } from "@/procedures/utilities";
 import { useDatabaseStore } from "@/stores/database";
+import { inj_DisplayNotice } from "@/types/injections";
 import {
   AndSearchNode,
   compile_search_command,
@@ -253,6 +261,7 @@ const { t } = i18n.global;
 const router = useRouter();
 const database_store = useDatabaseStore();
 const goto = useGoTo();
+const display_notice = inject(inj_DisplayNotice)!;
 
 const edit_data: Ref<DataItem | undefined> = ref(undefined);
 const edit_data_id: Ref<string | undefined> = ref(undefined);

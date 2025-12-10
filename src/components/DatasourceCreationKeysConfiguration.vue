@@ -9,6 +9,15 @@
       variant="outlined"
       @click:append="show_password = !show_password"
     />
+    <v-btn
+      block
+      :disabled="password === ''"
+      :loading="is_loading"
+      prepend-icon="mdi-dice-multiple"
+      @click="generate_and_report_configuration"
+    >
+      {{ $t("datasource_creation.generate_a_key") }}
+    </v-btn>
     <v-text-field
       v-model="salt_hex"
       disabled
@@ -23,24 +32,19 @@
       readonly
       variant="outlined"
     />
-    <v-btn
-      block
-      :disabled="password === ''"
-      :loading="is_loading"
-      prepend-icon="mdi-dice-multiple"
-      @click="generate_and_report_configuration"
-    >
-      {{ $t("datasource_creation.generate_a_key") }}
-    </v-btn>
   </v-form>
 </template>
 <script setup lang="ts">
 import type { Ref } from "vue";
 import type { Argon2Configuration, DataEncryptionKey } from "@/types/datasource-crypto";
-import { ref } from "vue";
-
+import { inject, ref } from "vue";
+import { i18n } from "@/locales";
 import { get_key_from_password } from "@/procedures/crypto";
 import { to_readable_hexadecimal } from "@/procedures/transcoding";
+import { inj_DisplayNotice } from "@/types/injections";
+
+const { t } = i18n.global;
+const display_notice = inject(inj_DisplayNotice)!;
 
 const props = defineProps<{
   disabled: boolean;
@@ -86,7 +90,13 @@ function generate_and_report_configuration() {
     key_digest_hex.value = to_readable_hexadecimal(new DataView(digest));
   })();
   const key_encryption_promise = (async () => {
-    const { key: password_key } = await get_key_from_password(password.value, argon2_configuration);
+    const key_result = await get_key_from_password(password.value, argon2_configuration);
+    if (key_result.is_err()) {
+      display_notice("error", t("message.error.failed_to_argon2"), String(key_result.unwrap_error()));
+      // we throw a dummy error to terminate subsequent procedures
+      throw new Error("dummy");
+    }
+    const { key: password_key } = key_result.unwrap();
     const nonce = new Uint8Array(12);
     crypto.getRandomValues(nonce);
     const encrypted_key = await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, password_key, key);
@@ -99,8 +109,9 @@ function generate_and_report_configuration() {
   })();
   // collect results
   Promise.all([key_digest_promise, key_encryption_promise]).then(([_, encryption_configuration]) => {
-    is_loading.value = false;
     emit("finished", { salt: salt, encryption: encryption_configuration });
+  }).finally(() => {
+    is_loading.value = false;
   });
 }
 </script>

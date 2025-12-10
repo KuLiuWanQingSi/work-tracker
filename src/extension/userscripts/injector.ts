@@ -168,8 +168,18 @@ async function update_materials(
     }
     // (re)start the script
     const data = await materials.database.get_content();
+    if (data.is_err()) {
+      show_alert({ title: "Failed to read the database", content: String(data.unwrap_error()) });
+      configure_indicator(materials.indicator, "failed", action_map);
+      return true;
+    }
     if (
-      await user_script_guard(materials.script_instance.run(data), "start", materials.indicator, action_map)
+      await user_script_guard(
+        materials.script_instance.run(data.unwrap()),
+        "start",
+        materials.indicator,
+        action_map,
+      )
     ) {
       // the run function failed and the error has been reported, just terminate
       return true;
@@ -195,9 +205,14 @@ async function update_materials(
     } else {
       // if it can, prefer this since it avoids some overhead
       const new_data = await materials.database.get_content();
+      if (new_data.is_err()) {
+        show_alert({ title: "Failed to read the database", content: String(new_data.unwrap_error()) });
+        configure_indicator(materials.indicator, "failed", action_map);
+        return true;
+      }
       if (
         await user_script_guard(
-          materials.script_instance.reset_data(new_data),
+          materials.script_instance.reset_data(new_data.unwrap()),
           "restart",
           materials.indicator,
           action_map,

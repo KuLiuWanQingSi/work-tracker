@@ -1,4 +1,5 @@
 import type { NoticePoster } from "@/types/injections";
+import type { Result } from "@/types/result";
 import { i18n } from "@/locales";
 
 export * from "./utilities-pure";
@@ -15,4 +16,21 @@ export function error_reporter(
   return future.catch(error => {
     display_notice("error", t("message.error.failure_report", { task: description }), String(error));
   });
+}
+
+// error reporter that works with Result<T>
+export async function result_error_reporter(
+  future: Promise<Result<void>>,
+  description: string,
+  display_notice: NoticePoster,
+): Promise<void> {
+  try {
+    const result = await future;
+    result.map_error(failure => {
+      display_notice("error", t("message.error.failure_report", { task: description }), String(failure));
+      return undefined;
+    });
+  } catch (error) {
+    display_notice("error", t("message.error.fallback_failure_report", { task: description }), String(error));
+  }
 }

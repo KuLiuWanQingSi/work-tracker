@@ -125,9 +125,10 @@
 
 <script setup lang="ts">
 import type { Ref, ShallowReactive } from "vue";
+import type { Failure } from "@/types/result";
 import { inject, ref, shallowReactive } from "vue";
-import { i18n } from "@/locales";
 
+import { i18n } from "@/locales";
 import { argon2_hash } from "@/procedures/argon2-hash";
 import { inj_DisplayNotice } from "@/types/injections";
 
@@ -183,6 +184,16 @@ const argon2_parameters: {
   parallelism: null,
 };
 
+function display_argon2_error(error: Failure) {
+  const panel_name = t("datasource_creation.kdf_detail_control");
+  const field_name = t("datasource_creation.kdf_memory");
+  display_notice(
+    "error",
+    t("message.error.failed_to_argon2"),
+    `${error}\n${t("message.error.failed_to_argon2_hint", { panel_name, field_name })}`,
+  );
+}
+
 function argon2_parameters_finished() {
   handling_argon2_parameters.value = false;
   if (
@@ -223,16 +234,12 @@ function validate_argon2_parameters() {
     time: iteration,
   });
   promise.then(result => {
-    if (result.succeed) {
+    if (result.is_ok()) {
       argon2_parameters.time = iteration;
       argon2_parameters.memory = fixed_parameters.memory;
       argon2_parameters.parallelism = fixed_parameters.parallelism;
     } else {
-      display_notice(
-        "error",
-        t("message.error.failed_to_argon2"),
-        `${result.error_code}: ${result.error_message}`,
-      );
+      display_argon2_error(result.unwrap_error());
     }
     argon2_parameters_finished();
   });
@@ -258,16 +265,12 @@ function probe_argon2_parameters() {
       const timeout_handler = setTimeout(canceler, timeout);
       const result = await prober;
       clearTimeout(timeout_handler);
-      if (!result.succeed && result.error_code !== -1000) {
+      if (result.is_err()) {
         // unexpected failure
-        display_notice(
-          "error",
-          t("message.error.failed_to_argon2"),
-          `${result.error_code}: ${result.error_message}`,
-        );
+        display_argon2_error(result.unwrap_error());
         return null;
       }
-      if (result.succeed) {
+      if (result.unwrap().length > 0) {
         lower = iterations;
         if (upper < 0) {
           upper *= 2;

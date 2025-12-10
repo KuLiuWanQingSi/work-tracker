@@ -98,7 +98,7 @@ const entries = useTemplateRef<DatasourceEntryAPI[]>("entries");
 
 // is continuing to next step allowed
 const can_go_next = computed(() => {
-  return include_image.value || entries.value?.length;
+  return include_image.value || (entries.value ?? []).length > 0;
 });
 
 function add_new_entry() {

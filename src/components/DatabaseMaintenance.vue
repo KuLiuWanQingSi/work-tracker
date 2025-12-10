@@ -98,9 +98,10 @@ import {
   wt_random_bytes,
 } from "@/procedures/crypto";
 import { ImagePoolConfiguration } from "@/procedures/image-utils";
-import { error_reporter } from "@/procedures/utilities";
+import { result_error_reporter } from "@/procedures/utilities";
 import { useDatabaseStore } from "@/stores/database";
 import { inj_DisplayNotice } from "@/types/injections";
+import { Result } from "@/types/result";
 
 const { t } = i18n.global;
 const display_notice = inject(inj_DisplayNotice)!;
@@ -144,18 +145,25 @@ const quota_usage = computed(() => {
   return (local_state.encrypted_counter + local_state.pending_encryptions) / EncryptMessageLimit;
 });
 
-async function rekey_implementation() {
+async function rekey_implementation(): Promise<Result<void>> {
   // we perform a rekey following these steps
   // 1. re-decrypt the data key: this is to make sure that the password supplied is the same as current one
-  const { key: user_key } = await get_key_from_password(
+  const key_result = await get_key_from_password(
     local_state.password,
     database_store.database_!.runtime.protection.argon2,
   );
-  await wt_decrypt(
+  if (key_result.is_err()) {
+    return key_result.erase_type();
+  }
+  const { key: user_key } = key_result.unwrap();
+  const try_decrypt_result = await wt_decrypt(
     user_key,
     database_store.database_!.runtime.protection.key_nonce,
     database_store.database_!.runtime.protection.encrypted_key,
   );
+  if (try_decrypt_result.is_err()) {
+    return try_decrypt_result.erase_type();
+  }
 
   // 2. generate new data key randomly
   const new_raw_data_key = wt_random_bytes(32);
@@ -172,33 +180,46 @@ async function rekey_implementation() {
 
   // 6. update the encryption counter
   local_state.encrypted_counter = database_store.database_!.protection.encrypted_counter;
+
+  return Result.ok(undefined);
 }
 function rekey() {
   local_state.blocking = true;
-  error_reporter(rekey_implementation(), t("maintenance.do_rekey"), display_notice).finally(() => {
+  result_error_reporter(rekey_implementation(), t("maintenance.do_rekey"), display_notice).finally(() => {
     local_state.blocking = false;
   });
 }
-async function update_password_implementation() {
+async function update_password_implementation(): Promise<Result<void>> {
   // 1. re-decrypt the data key: this is to make sure that the password supplied is correct
-  const { key: user_key } = await get_key_from_password(
+  const key_result = await get_key_from_password(
     local_state.password,
     database_store.database_!.runtime.protection.argon2,
   );
+  if (key_result.is_err()) {
+    return key_result.erase_type();
+  }
+  const { key: user_key } = key_result.unwrap();
   const raw_data_key = await wt_decrypt(
     user_key,
     database_store.database_!.runtime.protection.key_nonce,
     database_store.database_!.runtime.protection.encrypted_key,
   );
+  if (raw_data_key.is_err()) {
+    return raw_data_key.erase_type();
+  }
 
   // 2. calculate new user key
-  const { key: new_user_key } = await get_key_from_password(
+  const new_key_result = await get_key_from_password(
     local_state.new_password,
     database_store.database_!.runtime.protection.argon2,
   );
+  if (new_key_result.is_err()) {
+    return new_key_result.erase_type();
+  }
+  const { key: new_user_key } = new_key_result.unwrap();
 
   // 3. re-encrypt current raw data key with the new user key
-  const { data: encrypted_new_data_key, nonce } = await wt_encrypt(new_user_key, raw_data_key);
+  const { data: encrypted_new_data_key, nonce } = await wt_encrypt(new_user_key, raw_data_key.unwrap());
 
   // 4. update the data key to the database
   database_store.update_data_key({ encrypted_key: encrypted_new_data_key, nonce: nonce });
@@ -206,14 +227,18 @@ async function update_password_implementation() {
   // 5. clear the passwords
   local_state.password = "";
   local_state.new_password = "";
+
+  return Result.ok(undefined);
 }
 function update_password() {
   local_state.blocking = true;
-  error_reporter(update_password_implementation(), t("maintenance.change_password"), display_notice).finally(
-    () => {
-      local_state.blocking = false;
-    },
-  );
+  result_error_reporter(
+    update_password_implementation(),
+    t("maintenance.change_password"),
+    display_notice,
+  ).finally(() => {
+    local_state.blocking = false;
+  });
 }
 </script>
 <style lang="css" scoped>
