@@ -21,6 +21,16 @@
         </v-window>
       </v-card-text>
     </v-card>
+    <v-card class="danger-zone" variant="outlined">
+      <v-card-title>{{ $t("maintenance.danger_zone") }}</v-card-title>
+      <v-card-subtitle>{{ $t("maintenance.danger_zone_explained") }}</v-card-subtitle>
+      <v-card-text>
+        <v-btn block class="mb-1" @click="export_configuration">
+          {{ $t("maintenance.export_configuration") }}
+        </v-btn>
+        <p>{{ $t("maintenance.export_configuration_detail") }}</p>
+      </v-card-text>
+    </v-card>
     <v-card class="critical-zone" variant="outlined">
       <v-card-title>{{ $t("maintenance.critical_zone") }}</v-card-title>
       <v-card-subtitle>{{ $t("maintenance.critical_zone_explained") }}</v-card-subtitle>
@@ -98,6 +108,7 @@ import {
   wt_random_bytes,
 } from "@/procedures/crypto";
 import { ImagePoolConfiguration } from "@/procedures/image-utils";
+import { save_to_local } from "@/procedures/save-to-local";
 import { result_error_reporter } from "@/procedures/utilities";
 import { useDatabaseStore } from "@/stores/database";
 import { inj_DisplayNotice } from "@/types/injections";
@@ -137,6 +148,15 @@ onMounted(() => {
   local_state.initialized = true;
   database_store.encrypts_to_be_done = 0;
 });
+
+function export_configuration() {
+  save_to_local(
+    new Blob([new TextEncoder().encode(JSON.stringify(database_store.database_!.configurations.entry))], {
+      type: "application/json",
+    }),
+    "configuration.json",
+  );
+}
 
 const need_rekey = computed(() => {
   return local_state.encrypted_counter + local_state.pending_encryptions >= EncryptMessageLimit;
@@ -267,7 +287,10 @@ span.allocated,
 span.unallocated {
   border-radius: 20%;
 }
-.critical-zone {
+.danger-zone {
   border-color: rgb(var(--v-theme-warning));
+}
+.critical-zone {
+  border-color: rgb(var(--v-theme-error));
 }
 </style>

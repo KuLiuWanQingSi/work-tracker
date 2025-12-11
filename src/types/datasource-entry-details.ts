@@ -22,6 +22,11 @@ export interface DatasourceEntryTagExtraConfiguration {
 export interface DatasourceEntryTagConfiguration
   extends DatasourceEntryBaseConfiguration, DatasourceEntryTagExtraConfiguration {}
 
+export const RatingMetaConfiguration = {
+  minimum_score: 2,
+  maximum_score: 10,
+};
+
 export interface DatasourceEntryRatingExtraConfiguration {
   type: "rating";
   maximum_score: number;
@@ -42,6 +47,4 @@ export type DatasourceEntryConfiguration =
 
 export interface DatasourceEntryDetailsAPI {
   SortingMethodsAvailable: [Sorting, ...Sorting[]];
-  HaveExtraConfigurations: boolean;
-  get_configuration: () => DatasourceEntryExtraConfiguration;
 }

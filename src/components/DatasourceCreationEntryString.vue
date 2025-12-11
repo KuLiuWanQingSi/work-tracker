@@ -2,7 +2,7 @@
   <v-card>
     <v-card-text>
       <v-switch
-        v-model="unique"
+        v-model="configuration.unique"
         color="primary"
         :hint="$t('datasource_creation.string_unique_hint')"
         :label="$t('datasource_creation.string_unique')"
@@ -12,15 +12,22 @@
   </v-card>
 </template>
 <script setup lang="ts">
-import type { DatasourceEntryDetailsAPI } from "@/types/datasource-entry-details";
+import type {
+  DatasourceEntryDetailsAPI,
+  DatasourceEntryStringConfiguration,
+} from "@/types/datasource-entry-details";
+import { onMounted } from "vue";
 import { Sorting } from "@/definitions/sorting_types";
 
-const unique: Ref<boolean> = ref(false);
-
+const configuration = defineModel<DatasourceEntryStringConfiguration>({ required: true });
 const exposed: DatasourceEntryDetailsAPI = {
   SortingMethodsAvailable: [Sorting.Disabled, Sorting.AsString, Sorting.AsNumber, Sorting.AsDate],
-  HaveExtraConfigurations: true,
-  get_configuration: () => ({ type: "string", unique: unique.value }),
 };
 defineExpose(exposed);
+const emit = defineEmits<{
+  ready: [];
+}>();
+onMounted(() => {
+  emit("ready");
+});
 </script>

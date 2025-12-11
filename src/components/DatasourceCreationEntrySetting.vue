@@ -7,17 +7,24 @@
     :title="$t('datasource_creation.entry_setting')"
   >
     <v-card-text>
+      <v-file-input
+        filter-by-type="application/json"
+        :hint="$t('datasource_creation.load_existing_configuration.hint')"
+        :label="$t('datasource_creation.load_existing_configuration.label')"
+        persistent-hint
+        @update:model-value="load_existing_configure"
+      />
       <v-sheet>
         <v-container>
           <v-switch
-            v-model="include_image"
+            v-model="image_configuration.included"
             color="primary"
             :label="$t('datasource_creation.include_image')"
           />
-          <v-row v-if="include_image" align="center">
+          <v-row v-if="image_configuration.included" align="center">
             <v-col>
               <v-text-field
-                v-model="image_width"
+                v-model="image_configuration.width"
                 hide-details
                 :prefix="$t('datasource_creation.width')"
                 :suffix="$t('datasource_creation.pixel')"
@@ -28,7 +35,7 @@
             </v-col>
             <v-col>
               <v-text-field
-                v-model="image_height"
+                v-model="image_configuration.height"
                 hide-details
                 :prefix="$t('datasource_creation.height')"
                 :suffix="$t('datasource_creation.pixel')"
@@ -39,12 +46,11 @@
         <v-divider class="my-6" />
       </v-sheet>
       <datasource-creation-entry-base
-        v-for="(id, index) in entry_details"
-        :key="id"
-        ref="entries"
-        :control-value="id"
+        v-for="({ unique_id }, index) in entry_configurations"
+        :key="unique_id"
+        v-model="entry_configurations[index]!.configuration"
         :index="index"
-        :total="entry_details.length"
+        :total="entry_configurations.length"
         @move-down="move_entry_down(index)"
         @move-up="move_entry_up(index)"
         @remove="remove_entry(index)"
@@ -58,23 +64,50 @@
     <v-row>
       <v-spacer />
       <v-btn
+        v-if="configuration_invalid_reasons.length === 0"
         append-icon="mdi-arrow-right"
         color="primary"
-        :disabled="!can_go_next"
         @click="send_configurations"
       >
         {{ $t("action.continue_to_next_step") }}
+      </v-btn>
+      <v-btn
+        v-else
+        color="warning"
+        @click="
+          display_notice(
+            'warning',
+            t('datasource_creation.error.title'),
+            configuration_invalid_reasons.join('\n'),
+          )
+        "
+      >
+        {{ $t("action.check") }}
       </v-btn>
     </v-row>
   </v-container>
 </template>
 <script setup lang="ts">
-import type { Ref, ShallowReactive } from "vue";
-import type { DatasourceEntryAPI, EntriesConfiguration } from "@/types/datasource-entry";
-import type { DatasourceEntryConfiguration } from "@/types/datasource-entry-details";
-import { computed, inject, ref, shallowReactive, useTemplateRef } from "vue";
+import type { Reactive } from "vue";
+import type { EntriesConfiguration } from "@/types/datasource-entry";
+import { computed, inject, reactive } from "vue";
+import { Sorting } from "@/definitions/sorting_types";
 
 import { i18n } from "@/locales";
+import {
+  get_entry_configuration_invalid_reasons,
+  get_entry_configuration_invalid_reasons_trusted,
+} from "@/procedures/config-validator";
+import {
+  type DatasourceEntryBaseConfiguration,
+  type DatasourceEntryConfiguration,
+  type DatasourceEntryExtraConfiguration,
+  type DatasourceEntryRatingExtraConfiguration,
+  type DatasourceEntryStringConfiguration,
+  type DatasourceEntryStringExtraConfiguration,
+  type DatasourceEntryTagExtraConfiguration,
+  RatingMetaConfiguration,
+} from "@/types/datasource-entry-details";
 import { inj_DisplayNotice } from "@/types/injections";
 
 const { t } = i18n.global;
@@ -84,77 +117,163 @@ const emit = defineEmits<{
 }>();
 const display_notice = inject(inj_DisplayNotice)!;
 
-// if an image should be included for each item
-const include_image: Ref<boolean> = ref(false);
-// shape of the image to include
-const image_width: Ref<number> = ref(240);
-const image_height: Ref<number> = ref(135);
-
-// an array holding id of entry details: this is an array of uuids which triggers the list rendering and
-//  allowing components reused when they are only reordered
-const entry_details: ShallowReactive<string[]> = shallowReactive([]);
-// keep references about added entries
-const entries = useTemplateRef<DatasourceEntryAPI[]>("entries");
-
-// is continuing to next step allowed
-const can_go_next = computed(() => {
-  return include_image.value || (entries.value ?? []).length > 0;
+const image_configuration: Reactive<{
+  included: boolean;
+  width: number;
+  height: number;
+}> = reactive({
+  included: false,
+  width: 240,
+  height: 135,
 });
 
+const entry_configurations: Reactive<
+  {
+    unique_id: string;
+    configuration: DatasourceEntryConfiguration;
+  }[]
+> = reactive([]);
+
+function build_basic_config() {
+  return {
+    name: "",
+    sorting_method: Sorting.Unset,
+    optional: false,
+    type: "string",
+    unique: false,
+    exclusive: false,
+    maximum_score: 5,
+    hints: Array.from({ length: RatingMetaConfiguration.maximum_score }),
+  };
+}
+
 function add_new_entry() {
-  const name = crypto.randomUUID();
-  entry_details.push(name);
+  // we need to include fields for each possible type
+  const new_entry = build_basic_config() as DatasourceEntryStringConfiguration;
+  entry_configurations.push({
+    unique_id: crypto.randomUUID(),
+    configuration: new_entry,
+  });
+}
+
+function swap_array_element<T>(array: T[], i: number, j: number) {
+  // check is omitted since this function is not supposed to be called with random parameter
+  [array[i], array[j]] = [array[j]!, array[i]!];
 }
 function move_entry_up(index: number) {
   // check is omitted since this function is not supposed to be called with random parameter
-  entry_details.splice(index - 1, 2, entry_details[index] ?? "", entry_details[index - 1] ?? "");
+  swap_array_element(entry_configurations, index, index - 1);
 }
 function move_entry_down(index: number) {
   // check is omitted since this function is not supposed to be called with random parameter
-  entry_details.splice(index, 2, entry_details[index + 1] ?? "", entry_details[index] ?? "");
+  swap_array_element(entry_configurations, index, index + 1);
 }
 function remove_entry(index: number) {
   // check is omitted since this function is not supposed to be called with random parameter
-  entry_details.splice(index, 1);
+  entry_configurations.splice(index, 1);
+}
+function load_existing_configure(source: File | File[] | undefined) {
+  if (source === undefined) {
+    return;
+  }
+  if (Array.isArray(source)) {
+    if (source[0] !== undefined) {
+      load_existing_configure(source[0]);
+    }
+    return;
+  }
+  (async () => {
+    const text = await source.text();
+    const data = JSON.parse(text);
+    const reasons = get_entry_configuration_invalid_reasons(data);
+    if (reasons.length > 0) {
+      display_notice("error", t("datasource_creation.error.title"), reasons.join("\n"));
+      return;
+    }
+    const imported_configure = data as EntriesConfiguration;
+    if (imported_configure.image_size === undefined) {
+      image_configuration.included = false;
+    } else {
+      image_configuration.included = true;
+      image_configuration.height = imported_configure.image_size.height;
+      image_configuration.width = imported_configure.image_size.width;
+    }
+    entry_configurations.splice(0);
+    for (const entry of imported_configure.entries) {
+      const basic = build_basic_config();
+      if (entry.type === "rating") {
+        if (entry.hints === null) {
+          entry.hints = Array.from<string>({ length: RatingMetaConfiguration.maximum_score }).fill("");
+        } else {
+          entry.hints.push(
+            ...Array.from<string>({
+              length: RatingMetaConfiguration.maximum_score - entry.hints.length,
+            }).fill(""),
+          );
+        }
+      }
+      entry_configurations.push({
+        unique_id: crypto.randomUUID(),
+        configuration: { ...basic, ...entry } as DatasourceEntryConfiguration,
+      });
+    }
+  })().catch(error => {
+    display_notice("error", t("message.error.failed_to_import_reasons"), String(error));
+  });
 }
 
-function send_configurations() {
-  if (entries.value === null) {
-    return;
-  }
-
-  // collect entries
-  const entry_configurations = entries.value.map(node => node.get_configuration());
-  // use a set to make sure names of entries must be unique
-  const names: Set<string> = new Set();
-  const failed_entries: number[] = [];
-  // mark entry that returned error: that is those returned null as configuration
-  for (const [index, value] of entry_configurations.entries()) {
-    if (value !== null) {
-      names.add(value.name);
-      continue;
-    }
-    failed_entries.push(index);
-  }
-  // stop in case any error is encountered or the name is not unique
-  if (failed_entries.length > 0) {
-    display_notice(
-      "error",
-      t("message.error.failed_to_config_entries"),
-      failed_entries.map(index => index.toString()).join(", "),
-    );
-    return;
-  }
-  if (names.size !== entry_configurations.length) {
-    display_notice("error", t("message.error.duplicated_entries_defined"), "");
-    return;
-  }
-
-  emit("next", {
-    image_size: include_image.value
-      ? { width: Number(image_width.value), height: Number(image_height.value) }
+// since we includes all possible fields in the internal configuration structure, we need to filter those
+//  that are not used out before saving it
+const final_configuration = computed((): EntriesConfiguration => {
+  const result: EntriesConfiguration = {
+    image_size: image_configuration.included
+      ? { width: Number(image_configuration.width), height: Number(image_configuration.height) }
       : undefined,
-    entries: entry_configurations as DatasourceEntryConfiguration[],
-  });
+    entries: [],
+  };
+  for (const { configuration: entry } of entry_configurations) {
+    const basic_configuration: DatasourceEntryBaseConfiguration = {
+      name: entry.name.trim(),
+      sorting_method: entry.sorting_method,
+      optional: entry.optional,
+    };
+    const extra_configuration = ((): DatasourceEntryExtraConfiguration => {
+      switch (entry.type) {
+        case "string": {
+          const result: DatasourceEntryStringExtraConfiguration = {
+            type: entry.type,
+            unique: entry.unique,
+          };
+          return result;
+        }
+        case "tag": {
+          const result: DatasourceEntryTagExtraConfiguration = {
+            type: entry.type,
+            exclusive: entry.exclusive,
+          };
+          return result;
+        }
+        case "rating": {
+          const hint_slice = entry.hints!.slice(0, entry.maximum_score).map(item => item.trim());
+          const result: DatasourceEntryRatingExtraConfiguration = {
+            type: entry.type,
+            maximum_score: entry.maximum_score,
+            hints: hint_slice.some(item => item.length > 0) ? hint_slice : null,
+          };
+          return result;
+        }
+      }
+    })();
+    result.entries.push({ ...basic_configuration, ...extra_configuration });
+  }
+  return result;
+});
+
+const configuration_invalid_reasons = computed((): string[] =>
+  get_entry_configuration_invalid_reasons_trusted(final_configuration.value),
+);
+
+function send_configurations() {
+  emit("next", final_configuration.value);
 }
 </script>

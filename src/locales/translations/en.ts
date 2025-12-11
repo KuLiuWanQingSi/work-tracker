@@ -97,6 +97,7 @@ export const message = {
     select: "select",
     unselect: "unselect",
     batch_tag_modify: "start batched tag modification",
+    check: "check",
   },
   acTion: {
     create: "create {target}",
@@ -152,6 +153,10 @@ export const message = {
     datasource_name: "name of the database",
     entry_setting: "Entry setting",
     entry_setting_detail: "Decide what should be displayed for each item",
+    load_existing_configuration: {
+      label: "Load from existing configuration",
+      hint: "This will replace anything you have configured below!",
+    },
     include_image: "Include a cover image",
     width: "width",
     pixel: "pixel",
@@ -185,6 +190,21 @@ export const message = {
     string_unique: "make the content unique",
     string_unique_hint:
       "If the content is required to be unique, no different items can share the same value in this entry",
+    error: {
+      title: "The configuration is invalid due to following reasons",
+      image_size_not_positive: "Got negative value or zero as width or height of image.",
+      image_size_not_integer: "Specified width or height of image is not integer.",
+      entry_name_is_empty: "Entry at position {index} (starting with 1) has an empty name.",
+      entry_name_is_duplicated: "There are multiple entries with name {name}.",
+      bad_rating_max_score: ({
+        named,
+      }: {
+        named: ((name: "name") => string) & ((name: "index") => number);
+      }) =>
+        `Rating ${named("name").length > 0 ? "with name" : "at index"} ${named("name").length > 0 ? named("name") : named("index")} has invalid max score.`,
+      empty_database: "The database is ultimately empty.",
+      rating_hint_mismatch: "Number of hints mismatches: {score} rating levels vs {hint} hints.",
+    },
   },
   sorting: {
     disabled: {
@@ -231,6 +251,11 @@ export const message = {
   },
   maintenance: {
     image_allocation: "Image pool allocation statistics",
+    danger_zone: "danger zone",
+    danger_zone_explained: "All operations here forms certain level of danger",
+    export_configuration: "Export the database configuration",
+    export_configuration_detail:
+      "This will export your item entry settings in plaintext. Your data contents, database general configurations like the database name and your key will not be included. Sharing this will not make it easier to decrypt your database without a correct password / key.",
     critical_zone: "critical zone",
     critical_zone_explained: "All buttons here need a correct password to be functional",
     rekey:
