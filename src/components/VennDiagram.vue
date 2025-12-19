@@ -70,7 +70,7 @@ const remaining = computed(() => props.total - props.first - props.second + prop
 const first_ratio = computed(() => pure_first.value / props.total);
 const second_ratio = computed(() => pure_second.value / props.total);
 const intersect_ratio = computed(() => props.intersect / props.total);
-const rest_ratio = computed(() => 1 - first_ratio.value - second_ratio.value + intersect_ratio.value);
+const rest_ratio = computed(() => remaining.value / props.total);
 const style = computed(() => {
   const [f, s, i, r] = reform_ratios(
     [first_ratio.value, second_ratio.value, intersect_ratio.value, rest_ratio.value],
