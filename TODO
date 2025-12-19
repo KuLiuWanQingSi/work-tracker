@@ -9,9 +9,6 @@
 [functionality] Database maintenance
   Statistics view about the database
   Tag summary about the database
-  Tag renaming support
-  Tag merging support: multiple tags may be (accidentally) used to mark the same thing, merging allows to
-   remove such duplication by unifying them with a single tag
   Tag aliasing: like merging but with long-term effect that if B is set as an alias to A, any instances of B
    created later will be automatically and silently transformed into A. This eases the conversion between
    different tags used to describe the same thing from different sources

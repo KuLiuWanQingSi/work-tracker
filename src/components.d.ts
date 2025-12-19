@@ -40,6 +40,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     TagInsight: typeof import('./components/TagInsight.vue')['default']
+    TagManagement: typeof import('./components/TagManagement.vue')['default']
     VennDiagram: typeof import('./components/VennDiagram.vue')['default']
   }
 }

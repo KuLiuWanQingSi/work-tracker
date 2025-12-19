@@ -37,6 +37,21 @@ export const message = {
       failed_to_import_image: "Cannot load and prepare the image. Please recheck if it is a valid image.",
       cannot_parse_JSON: "Cannot parse specified JSON file. Is it corrupted?",
       invalid_data_format: "The data file has invalid format.",
+      failed_to_rename_tag: "Failed to rename the tag",
+      failed_to_remove_tag: "Failed to remove the tag",
+      tag_name_collision: {
+        brief: "Tag name collision detected",
+        detail: "There is already another tag with name {name}",
+      },
+      removed_last_tag: {
+        brief: "Entry requirement violated",
+        detail:
+          "Removing the tag {name} will leave some item with an empty {entry_name} entry while which is not optional",
+      },
+      empty_tag_name: {
+        brief: "The tag name is empty",
+        detail: "Empty tag name is not allowed. Note that leading / tailing spaces are removed.",
+      },
     },
     item_invalid_reason: {
       missing_entry: "missing required entry: {0}",
@@ -262,6 +277,33 @@ export const message = {
     tag_insight: {
       title: "Tag Insight",
       subtitle: "Inspect relationship / correspondence between tags",
+    },
+    tag_management: {
+      title: "Tag Management",
+      entry_picker: "Pick an entry",
+      table: {
+        titles: {
+          id: "Internal ID",
+          content: "Content",
+          references: "#Usage",
+          actions: "actions",
+        },
+      },
+      merge_tags: "Merge selected tags",
+      remove_unused_tags: "Remove all unused tags",
+      confirm_removal: {
+        title: "Confirm your removal",
+        explanation:
+          "The tag you are removing is one in use. Removing it will remove this tag from all items referencing it. Are you sure? Note that this will fail if the entry is not optional and some item will have no tag left in this entry after such removal, in which case the removal will be canceled and no modification will be done to the database.",
+      },
+      confirm_rename: {
+        title: "Pick a new name for {old_name}",
+        rename_into: "Rename the tag to...",
+      },
+      confirm_merge: {
+        title: "Pick a tag",
+        merge_into: "Merge tags into...",
+      },
     },
     danger_zone: "danger zone",
     danger_zone_explained: "All operations here forms certain level of danger",

@@ -21,6 +21,7 @@
         </v-window>
       </v-card-text>
     </v-card>
+
     <v-card>
       <v-card-title>{{ $t("maintenance.tag_insight.title") }}</v-card-title>
       <v-card-subtitle>{{ $t("maintenance.tag_insight.subtitle") }}</v-card-subtitle>
@@ -28,6 +29,14 @@
         <tag-insight />
       </v-card-text>
     </v-card>
+
+    <v-card v-if="database_store.tags.size > 0">
+      <v-card-title>{{ $t("maintenance.tag_management.title") }}</v-card-title>
+      <v-card-text>
+        <tag-management />
+      </v-card-text>
+    </v-card>
+
     <v-card class="danger-zone" variant="outlined">
       <v-card-title>{{ $t("maintenance.danger_zone") }}</v-card-title>
       <v-card-subtitle>{{ $t("maintenance.danger_zone_explained") }}</v-card-subtitle>
@@ -38,6 +47,7 @@
         <p>{{ $t("maintenance.export_configuration_detail") }}</p>
       </v-card-text>
     </v-card>
+
     <v-card class="critical-zone" variant="outlined">
       <v-card-title>{{ $t("maintenance.critical_zone") }}</v-card-title>
       <v-card-subtitle>{{ $t("maintenance.critical_zone_explained") }}</v-card-subtitle>
@@ -121,6 +131,7 @@ import { useDatabaseStore } from "@/stores/database";
 import { inj_DisplayNotice } from "@/types/injections";
 import { Result } from "@/types/result";
 import TagInsight from "./TagInsight.vue";
+import TagManagement from "./TagManagement.vue";
 
 const { t } = i18n.global;
 const display_notice = inject(inj_DisplayNotice)!;

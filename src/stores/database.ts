@@ -2,7 +2,7 @@ import type { Ref } from "vue";
 import type { LoadedImage } from "@/procedures/item-migrant";
 import type { Datasource } from "@/types/datasource";
 import type { DataItem } from "@/types/datasource-data";
-import type { RatingEntryData, StringEntryData, TagEntryData } from "@/types/datasource-entry";
+import type { EntryData, RatingEntryData, StringEntryData, TagEntryData } from "@/types/datasource-entry";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import { i18n } from "@/locales";
@@ -550,6 +550,193 @@ export const useDatabaseStore = defineStore("database", () => {
     return internal_states.tag_patch as TagPatch;
   }
 
+  // rename a tag
+  //  this will fail if there is a collision
+  function rename_tag(entry: string, index: number, new_name: string): Result<void> {
+    const target_tags = tags.value.get(entry);
+    if (target_tags === undefined) {
+      return Result.error(
+        "Cannot find the entry",
+        `No entry named ${entry} with tag type can be found. This is likely a BUG.`,
+      );
+    }
+    if (index >= target_tags.length) {
+      return Result.error(
+        "Cannot find the tag to edit",
+        `ID ${index} exceeds the number of currently registered tags. This is likely a BUG.`,
+      );
+    }
+    if (target_tags[index] === new_name) {
+      return Result.ok(undefined);
+    }
+    if (target_tags.includes(new_name)) {
+      return Result.error(
+        t("message.error.tag_name_collision.brief"),
+        t("message.error.tag_name_collision.detail", { name: new_name }),
+      );
+    }
+    target_tags[index] = new_name;
+    internal_states.modification_manager.modify_core_database();
+    return Result.ok(undefined);
+  }
+
+  // transform a tag entry on each data item
+  //  this will not affect the database, but a copy is returned
+  function transform_tags(
+    item_entries: Map<string, EntryData>[],
+    entry: string,
+    removal: Set<number>,
+    translate: Map<number, number>,
+  ): Map<string, EntryData>[] {
+    return item_entries.map(entries => {
+      const result = new Map(entries.entries());
+      const target_entry = entries.get(entry);
+      if (target_entry !== undefined) {
+        const target_data = target_entry as TagEntryData;
+        const new_tags = [
+          ...new Set(
+            target_data.tags.filter(tag => !removal.has(tag)).map(tag => translate.get(tag) ?? tag),
+          ).keys(),
+        ].toSorted();
+        if (new_tags.length > 0) {
+          const new_data: TagEntryData = { tags: new_tags };
+          result.set(entry, new_data);
+        } else {
+          result.delete(entry);
+        }
+      }
+      return result;
+    });
+  }
+
+  // build tag transform mapping
+  function build_tag_mapping(old_tags: string[], new_tags: string[]): Map<number, number> {
+    const transform_mapping = new Map<number, number>();
+    for (const [i, tag] of old_tags.entries()) {
+      const new_index = new_tags.indexOf(tag);
+      if (new_index === -1 || new_index === i) {
+        continue;
+      }
+      transform_mapping.set(i, new_index);
+    }
+    return transform_mapping;
+  }
+
+  // replace entry of data items
+  function replace_item_entries(originals: [string, DataItem][], new_entries: Map<string, EntryData>[]) {
+    const new_data = new Map<string, DataItem>();
+    for (const [i, [runtime_id, { image }]] of originals.entries()) {
+      const new_value: DataItem = {
+        image,
+        entries: new_entries[i]!,
+      };
+      new_data.set(runtime_id, new_value);
+    }
+    data.value = new_data;
+  }
+
+  // remove tags
+  //  this will fail if some item will have an empty tag entry after the removal and the entry is not optional
+  function remove_tag(entry: string, indices: number[]): Result<void> {
+    const target_tags = tags.value.get(entry);
+    if (target_tags === undefined) {
+      return Result.error(
+        "Cannot find the entry",
+        `No entry named ${entry} with tag type can be found. This is likely a BUG.`,
+      );
+    }
+    if (indices.some(index => index >= target_tags.length)) {
+      return Result.error(
+        "Cannot find the tag to remove",
+        `${indices} exceeds the number of currently registered tags. This is likely a BUG.`,
+      );
+    }
+    // build new entry tags after the removal
+    const removal = new Set(indices);
+    const new_entry_tags = target_tags.filter((_, id) => !removal.has(id));
+    // build the transform mapping
+    const transform_mapping = build_tag_mapping(target_tags, new_entry_tags);
+    // transform items
+    const items = [...data.value.entries()];
+    const transformed_item_entries = transform_tags(
+      items.map(([_, value]) => value.entries!),
+      entry,
+      removal,
+      transform_mapping,
+    );
+    // check if all results are valid
+    if (!entries.value.find(({ name }) => name === entry)!.optional) {
+      for (const item_entries of transformed_item_entries) {
+        if (item_entries.get(entry) === undefined) {
+          return Result.error(
+            t("message.error.removed_last_tag.brief"),
+            t("message.error.removed_last_tag.detail", {
+              name: indices.map(index => target_tags[index]!).join(", "),
+              entry_name: entry,
+            }),
+          );
+        }
+      }
+    }
+    // update items and tags
+    replace_item_entries(items, transformed_item_entries);
+    if (new_entry_tags.length > 0) {
+      tags.value.set(entry, new_entry_tags);
+    } else {
+      tags.value.delete(entry);
+    }
+    internal_states.modification_manager.modify_core_database();
+    return Result.ok(undefined);
+  }
+
+  // merge several tags
+  function merge_tags(entry: string, merge: number[], into: number): Result<void> {
+    if (!merge.includes(into)) {
+      return Result.error(
+        "Cannot merge tags into a new one",
+        "The tag to be merged into is not one of the tags to be merged, which is not expected. This is likely a BUG.",
+      );
+    }
+    const target_tags = tags.value.get(entry);
+    if (target_tags === undefined) {
+      return Result.error(
+        "Cannot find the entry",
+        `No entry named ${entry} with tag type can be found. This is likely a BUG.`,
+      );
+    }
+    if (merge.some(index => index >= target_tags.length)) {
+      return Result.error(
+        "Cannot find the tag to merge",
+        `${merge} includes something exceeding the number of currently registered tags. This is likely a BUG.`,
+      );
+    }
+    // find tags to be removed
+    const removal = new Set(merge.filter(id => id !== into));
+    // build new tag list
+    const new_entry_tags = target_tags.filter((_, id) => !removal.has(id));
+    // build transform mapping
+    const transform_mapping = build_tag_mapping(target_tags, new_entry_tags);
+    const into_new = transform_mapping.get(into) ?? into;
+    for (const merged of merge) {
+      if (merged !== into_new) {
+        transform_mapping.set(merged, into_new);
+      }
+    }
+    // transform items
+    const items = [...data.value.entries()];
+    const transformed_item_entries = transform_tags(
+      items.map(([_, value]) => value.entries!),
+      entry,
+      new Set(), // no removal to be done here: mapping and deduplicate instead
+      transform_mapping,
+    );
+    // the transformed items will always be valid
+    replace_item_entries(items, transformed_item_entries);
+    tags.value.set(entry, new_entry_tags);
+    internal_states.modification_manager.modify_core_database();
+    return Result.ok(undefined);
+  }
+
   // compare two data items, return if a modification is made
   function compare_data_item(old_data: DataItem | undefined, new_data: DataItem): boolean {
     if (old_data === undefined) {
@@ -995,6 +1182,9 @@ export const useDatabaseStore = defineStore("database", () => {
     place_image_cache,
     acquire_new_runtime_id,
     prepare_tag_registration,
+    rename_tag,
+    remove_tag,
+    merge_tags,
     place_item,
     query_image_pool_allocation,
     save_delta,

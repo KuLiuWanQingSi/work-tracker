@@ -31,6 +31,10 @@ export interface DatasourceInternals {
     entry: EntriesConfiguration;
   };
   images?: DatasourceImages;
+  // tags pool. Items will store only references to tags stored here instead of the full content of each tags.
+  //  This reduces storage cost by deduplication. To further reduce overhead, this map includes only entries
+  //  with tag registered. If the database has no tag entries or none of the tag entries has registered tag,
+  //  this value should be set to undefined and therefore excluded from the stored database.
   tags?: Map<string, string[]>;
 
   // data are stored in a mapping from is id (also referred as runtime_id) since this id was not stored
