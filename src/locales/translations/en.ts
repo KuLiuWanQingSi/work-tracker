@@ -10,7 +10,7 @@ export const message = {
         "This is a fallback report where an Error is thrown instead of being wrapped by Result<T>. Please file an issue if you would like to.",
       failed_to_argon2: "Argon2 returned an error.",
       failed_to_argon2_hint:
-        "This is usually caused large memory usage, you can try to open the panel '{panel_name}' and reduce value in '{field_name}'. Note that decreasing the value harms security: you are suggested set the value above 64MiB. If the problem continues, it might be your browser setting a really tight memory limitation and you can search for solutions on the Internet.",
+        "This is usually caused by large memory usage, you can try to open the panel '{panel_name}' and reduce value in '{field_name}'. Note that decreasing the value harms security: you are suggested set the value above 64MiB. If the problem continues, it might be your browser setting a really tight memory limitation and you can search for solutions on the Internet.",
       failed_to_config_entries: "Entries at following indices are invalid.",
       duplicated_entries_defined: "Some entries share the same name.",
       failed_to_parse_imported_data: "Cannot parse imported data.",
@@ -146,12 +146,12 @@ export const message = {
       access_by_third_party: {
         question: "Can the password verification bypassed, say, by modifying the code?",
         answer:
-          "No. When opening your database, the application is not actually verifying if your password is correct: we are not allowing someone with the correct password to access data we always have in the database, but asking your password to recover real data from the database. In one word, the data does not exist, not in an accessible way, before a correct password is used to transform it. Anyone can open the main database file directly without this application since it is nothing special than a commonly used JSON file, but there are only random bytes if they do not decrypt it with the correct password.",
+          "No. When opening your database, the application is not just handling data which is always ready in the database to anyone with a correct password, but recovering real data from the database with the password supplied. This difference seems minor, but is indeed significant: the data does not exist, not in an accessible way, before a correct password is used to transform it. Anyone can open the main database file directly without this application since it is nothing special than a commonly used JSON file, but there are only random bytes if they do not decrypt it with the correct password.",
       },
       implement_detail: {
         question: "I want to know details about how my database is protected.",
         answer:
-          "All data in your database, together with the database configurations, are encrypted with AES in GCM mode with 256-bit key, referred as the data key, generated randomly when the database is created. Images are also encrypted by the data key but not embedded into the main data file but as separate files to reduce file sizes, and the header of the images are preserved to make them looks like images. This leaks no content of the images but only the image size of PNG images. The data key is, in turn, encrypted by a key derived from the password you set using Argon2, which is referred as the user key. The user key, together with the password, is never saved but dropped once the data key is encrypted (when creating databases) or decrypted (when opening databases). This dual key structure is widely used and allows changing password without re-encrypting the whole database. Someone without a correct password, user key or data key can only acquire the following meaningful information from the database: the number of items in it if you configured the database to include an image for each item and the parameters used when invoking Argon2.",
+          "All data in your database, together with the database configurations, are encrypted with AES in GCM mode with 256-bit key, referred as the data key, generated randomly when the database is created. Images are also encrypted by the data key but as separate files instead of embedded into the main data file to reduce file sizes, and the header of the images are preserved to make them looks like images. This leaks no content of the images but only the image size of PNG images. The data key is, in turn, encrypted by a key derived from the password you set using Argon2, which is referred as the user key. The user key, together with the password, is never saved but dropped once the data key is encrypted (when creating databases) or decrypted (when opening databases). This dual key structure is widely used and allows changing password without re-encrypting the whole database. Someone without a correct password, user key or data key can only acquire the following meaningful information from the database: the number of items in it if you configured the database to include an image for each item and the parameters used when invoking Argon2.",
       },
     },
     welcome: "Welcome to work-tracker",
@@ -207,7 +207,7 @@ export const message = {
     summary_and_done_detail:
       "The database has been created! We just need to settle a couple of things down, then you can save the database and are open it.",
     tag_exclusive: "make tags exclusive",
-    tag_exclusive_hint: "No more than one tag can be picked if the tag is in exclusive mode",
+    tag_exclusive_hint: "No more than one tag can be picked if the tag entry is in exclusive mode",
     rating_maximum: "maximum score",
     rating_use_hint: "use hints to help scoring",
     string_unique: "make the content unique",
